@@ -2,6 +2,9 @@
 
 Booking site for the APC Club's adventure trip to Jawai, NIFT Jodhpur.
 
+A one-day trip: the bus leaves campus in the morning, and everyone is back the same night.
+Bus, food and the safari are all in the price.
+
 Students book up to 5 seats on one NIFT ID, fill in blood group / medical details /
 emergency contacts for everyone travelling, pay by UPI, and get QR tickets once an admin
 verifies the payment. On trip day the QRs are scanned at the bus.
@@ -93,16 +96,42 @@ ID, seat count and trip lead contact. The public page reads these live.
 
 ### Pricing
 
+What the student sees:
+
 - **₹2099 per person**
-- **₹99 off the whole booking** when all 5 seats are booked together → **₹10,396**
+- **₹199 off the whole booking** when all 5 seats are booked together → **₹10,296**
 - **Promo codes** — flat or percentage
 - **Discounts never stack.** A booking gets the *larger* of the group discount and the
   promo code, never both. A tie goes to the group discount, so a promo code is never
   consumed without saving anyone money.
 
-All of it lives in one function, `quote()` in `src/lib/pricing.ts`, which the booking form,
-the student's booking page and the admin verifier all call — so nobody ever sees one number
-and is charged another.
+`quote()` in `src/lib/pricing.ts` is the only place this is calculated. The booking form,
+the student's booking page and the admin verifier all call it, so nobody sees one number and
+is charged another.
+
+### Cost vs profit — admin only
+
+That ₹2099 is really two numbers: **₹2000 the seat actually costs** the club (bus, food,
+safari) and **₹99 the club keeps**. `profit()` in the same file splits them.
+
+**A discount comes out of the margin, never out of the cost** — suppliers get paid whatever
+happens. So a full group of 5:
+
+| | |
+|---|---|
+| Collected | ₹10,296 |
+| Trip cost (₹2000 × 5) | ₹10,000 |
+| Margin before discount | ₹495 |
+| Group discount | −₹199 |
+| **Club keeps** | **₹296** |
+
+The base cost lives in **`jawaiTrip/finance`**, which is admin-read-only — *not* in
+`settings`, because settings are world-readable so the public page can show the price. The
+margin is never visible to a student, and never stored on a booking they can read.
+
+`/admin` totals collected, trip cost and profit separately across all confirmed bookings,
+and each booking shows its own split. If a promo code is bigger than the margin, net profit
+goes negative and both the booking and the dashboard say so in red.
 
 ### Booking flow
 
@@ -147,6 +176,7 @@ Everything under `jawaiTrip`:
 | Key | What's in it |
 |---|---|
 | `settings` | Price, dates, seats, UPI details, trip lead contact. World-readable. |
+| `finance` | What a seat costs the club. **Admin-only** — never world-readable. |
 | `admins/$uid` | `true` for trip admins. |
 | `bookings/$id` | Booker, travellers, pricing breakdown, payment proof, status. |
 | `bookingsByUser/$uid/$id` | "Does this person already have a booking?" |

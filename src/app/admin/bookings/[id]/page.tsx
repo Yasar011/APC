@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { PriceBreakdown } from "@/components/trip/PriceBreakdown";
+import { ProfitBreakdown } from "@/components/trip/ProfitBreakdown";
 import {
   Badge,
   Button,
@@ -30,13 +31,19 @@ import {
 import {
   confirmBooking,
   readBooking,
+  readFinance,
   readPromo,
   readSettings,
   rejectBooking,
 } from "@/lib/trip";
-import { quote } from "@/lib/pricing";
-import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, DEFAULT_SETTINGS } from "@/lib/constants";
-import { Booking, PricingBreakdown, TripSettings } from "@/lib/types";
+import { profit, quote } from "@/lib/pricing";
+import {
+  BOOKING_STATUS_COLORS,
+  BOOKING_STATUS_LABELS,
+  DEFAULT_FINANCE,
+  DEFAULT_SETTINGS,
+} from "@/lib/constants";
+import { Booking, PricingBreakdown, TripFinance, TripSettings } from "@/lib/types";
 import { formatDateTime, rupees } from "@/lib/utils";
 
 /**
@@ -73,6 +80,7 @@ export default function AdminBookingDetailPage() {
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [settings, setSettings] = useState<TripSettings>(DEFAULT_SETTINGS as TripSettings);
+  const [finance, setFinance] = useState<TripFinance>(DEFAULT_FINANCE as TripFinance);
   const [recomputed, setRecomputed] = useState<PricingBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -83,11 +91,13 @@ export default function AdminBookingDetailPage() {
   const load = useCallback(async () => {
     if (!bookingId) return;
     try {
-      const [found, tripSettings] = await Promise.all([
+      const [found, tripSettings, tripFinance] = await Promise.all([
         readBooking(bookingId),
         readSettings(),
+        readFinance(),
       ]);
       setSettings(tripSettings);
+      setFinance(tripFinance);
       if (!found) {
         setLoadError("That booking doesn't exist.");
         return;
@@ -272,6 +282,24 @@ export default function AdminBookingDetailPage() {
                   changed after they booked — go by what they actually paid.
                 </p>
               )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <h2 className="text-sm font-semibold text-neutral-900">
+                What the club makes on this
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">
+                Not shown to the student.
+              </p>
+              <div className="mt-4">
+                <ProfitBreakdown
+                  split={profit(booking.pricing, finance)}
+                  seats={booking.seats}
+                  baseCostPerPerson={finance.baseCostPerPerson}
+                />
+              </div>
             </CardBody>
           </Card>
 

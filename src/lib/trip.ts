@@ -10,8 +10,8 @@ import {
 } from "firebase/database";
 import { db, tripPath } from "./firebase";
 import { newTicketCode } from "./codes";
-import { DEFAULT_SETTINGS } from "./constants";
-import { Booking, PromoCode, Ticket, TripSettings } from "./types";
+import { DEFAULT_FINANCE, DEFAULT_SETTINGS } from "./constants";
+import { Booking, PromoCode, Ticket, TripFinance, TripSettings } from "./types";
 
 /**
  * Every read and write this app performs, in one place.
@@ -46,6 +46,26 @@ export function subscribeSettings(
 
 export async function saveSettings(settings: Partial<TripSettings>) {
   await update(ref(db, tripPath("settings")), { ...settings, updatedAt: Date.now() });
+}
+
+// ----------------------------------------------------------------- finance
+
+/**
+ * What a seat costs the club, kept out of `settings` because settings are
+ * world-readable. Admin-only, so a denied read here just means "not an
+ * admin" and the caller falls back to the default.
+ */
+export async function readFinance(): Promise<TripFinance> {
+  try {
+    const snap = await get(ref(db, tripPath("finance")));
+    return { ...DEFAULT_FINANCE, ...(snap.val() ?? {}) } as TripFinance;
+  } catch {
+    return DEFAULT_FINANCE as TripFinance;
+  }
+}
+
+export async function saveFinance(finance: Partial<TripFinance>) {
+  await update(ref(db, tripPath("finance")), { ...finance, updatedAt: Date.now() });
 }
 
 // ------------------------------------------------------------------ admins

@@ -4,23 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  BedDouble,
+  Binoculars,
   Bus,
   CalendarDays,
-  Camera,
-  Check,
   ChevronDown,
-  Flame,
+  ChevronLeft,
+  ChevronRight,
+  Headphones,
   MapPin,
   Mountain,
-  Phone,
   ShieldCheck,
-  Sunrise,
+  Sparkles,
+  Star,
+  Sunset,
   Users,
   Utensils,
 } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
-import { Button } from "@/components/ui/primitives";
 import { useAuth } from "@/contexts/AuthContext";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { subscribeSettings } from "@/lib/trip";
@@ -28,87 +28,78 @@ import { DEFAULT_SETTINGS } from "@/lib/constants";
 import { TripSettings } from "@/lib/types";
 import { formatDate, rupees } from "@/lib/utils";
 
+const FEATURES = [
+  {
+    icon: Binoculars,
+    title: "Real Leopard Country",
+    body: "Jawai's granite hills are one of the few places on earth where leopards live openly alongside people. An open-jeep safari with licensed local guides who know exactly where to look.",
+  },
+  {
+    icon: Bus,
+    title: "All-in-One Booking",
+    body: "Bus, food and the safari in one price. Book up to five of you together, pay once, and nothing more is collected on the day.",
+  },
+  {
+    icon: Headphones,
+    title: "Looked After",
+    body: "Trip leads carry everyone's blood group, allergies and emergency contact on the bus. Questions before, during and after — someone from APC is on it.",
+  },
+];
+
 const HIGHLIGHTS = [
   {
-    icon: Mountain,
-    title: "Leopards in granite country",
-    body: "Jawai's boulder hills are one of the few places on earth where leopards live openly alongside people. Rabari shepherds have shared these hills with them for generations, without fences and without incident.",
+    slug: "safari",
+    name: "Leopard Safari",
+    tag: "Main event",
+    blurb: "Open jeep",
+    rating: "4.9",
+    location: "Jawai Hills",
+    accent: "from-amber-900/60 via-stone-800 to-stone-950",
   },
   {
-    icon: Sunrise,
-    title: "Two safaris, dawn and dusk",
-    body: "Open-jeep safaris when the light is low and the cats are moving. Between them: the dam, the crocodiles, the flamingos and cranes that winter here, and a lot of very good silence.",
+    slug: "bandh",
+    name: "Jawai Bandh",
+    tag: "Included",
+    blurb: "Crocodiles & cranes",
+    rating: "4.7",
+    location: "Pali, Rajasthan",
+    accent: "from-sky-900/60 via-slate-800 to-slate-950",
   },
   {
-    icon: Flame,
-    title: "Bonfire, food, and the whole batch",
-    body: "Dinner under the sky, music, and the kind of night that ends up being the actual reason people remember a trip. Then a sunrise most of us have never seen sober.",
+    slug: "rabari",
+    name: "Rabari Village",
+    tag: "Guided walk",
+    blurb: "Shepherd country",
+    rating: "4.8",
+    location: "Jawai Bandh",
+    accent: "from-rose-900/50 via-stone-800 to-stone-950",
+  },
+  {
+    slug: "sunset",
+    name: "Sunset Point",
+    tag: "Included",
+    blurb: "Golden hour",
+    rating: "5.0",
+    location: "Jawai Hills",
+    accent: "from-orange-900/60 via-neutral-800 to-neutral-950",
   },
 ];
 
-const ITINERARY = [
+const STEPS = [
   {
-    day: "Day 1",
-    items: [
-      { time: "Early morning", text: "Bus leaves campus. Breakfast on the way." },
-      { time: "Midday", text: "Reach Jawai, check in, lunch, and time to do nothing." },
-      { time: "Late afternoon", text: "First jeep safari into the leopard hills." },
-      { time: "Night", text: "Bonfire, dinner, music, stars." },
-    ],
+    n: "1",
+    title: "Pick Your Seats",
+    body: "Up to five of you on one booking, including you. Fill in everyone's details and medical info once.",
   },
   {
-    day: "Day 2",
-    items: [
-      { time: "Before sunrise", text: "Second safari — the best light of the trip." },
-      { time: "Morning", text: "Jawai Bandh: crocodiles, migratory birds, the dam wall." },
-      { time: "Afternoon", text: "Rabari village walk, lunch, pack up." },
-      { time: "Evening", text: "Bus back to campus." },
-    ],
-  },
-];
-
-const INCLUDED = [
-  { icon: Bus, label: "Return bus from campus" },
-  { icon: BedDouble, label: "One night's stay" },
-  { icon: Utensils, label: "All meals on the trip" },
-  { icon: Mountain, label: "Two jeep safaris" },
-  { icon: Flame, label: "Bonfire evening" },
-  { icon: ShieldCheck, label: "First-aid kit and trip leads" },
-];
-
-const CARRY = [
-  "A government photo ID — carry the original, not a photo of it",
-  "Warm layers: the hills get genuinely cold after dark",
-  "Closed walking shoes, not slides",
-  "Any medication you take, in its own packaging",
-  "A power bank — charging points are limited",
-  "Sunscreen, cap, and a refillable water bottle",
-];
-
-const FAQS = [
-  {
-    q: "Are the leopards dangerous?",
-    a: "Jawai is one of the few places where leopards and people have shared the same hills for generations without attacks. Safaris are in open jeeps with licensed local guides who know exactly where the line is, and you stay in the vehicle when they say so.",
+    n: "2",
+    title: "Pay by UPI",
+    body: "Pay the exact amount and upload the screenshot. Takes a minute.",
   },
   {
-    q: "Can I book for my friends?",
-    a: "Yes — up to 5 students on one booking, including you. You fill in everyone's details once, pay for the whole group, and each person gets their own QR ticket for the bus.",
-  },
-  {
-    q: "Why do you need my blood group and medical details?",
-    a: "Because we are taking a bus full of students several hours from campus into a rural area. If something happens, the trip leads need to know your blood group, any condition you have, and who to call — immediately, not after phoning around. Only the trip admins can see it.",
-  },
-  {
-    q: "What if I have a medical condition?",
-    a: "Tell us on the form. Almost nothing rules you out — we just need to know so we can plan for it and carry what you might need.",
-  },
-  {
-    q: "How do I pay?",
-    a: "UPI. You'll see the payment details after you fill in the form; pay, upload the screenshot, and an admin confirms your seats. Your tickets appear once it's approved.",
-  },
-  {
-    q: "What if my payment gets rejected?",
-    a: "You'll see exactly why on your booking page, and you can upload a corrected screenshot without starting over.",
+    n: "3",
+    title: "Get Your QR Tickets",
+    body: "An admin checks the payment. Your QR boarding passes appear on your booking page.",
   },
 ];
 
@@ -116,18 +107,19 @@ export default function JawaiPage() {
   const { user, loading } = useAuth();
   const [settings, setSettings] = useState<TripSettings>(DEFAULT_SETTINGS as TripSettings);
   const [scrolled, setScrolled] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [slide, setSlide] = useState(0);
+  const railRef = useRef<HTMLDivElement | null>(null);
   const parallaxRef = useRef<HTMLDivElement | null>(null);
 
-  // Public read: settings are world-readable so this renders for signed-out
-  // visitors. A failure is non-fatal — the page keeps its static copy.
+  // Settings are world-readable, so this renders for signed-out visitors.
+  // A failure is non-fatal — the page keeps its static copy.
   useEffect(() => {
     if (!isFirebaseConfigured) return;
     return subscribeSettings(setSettings, () => {});
   }, []);
 
-  // Hero parallax, driven off one rAF-throttled scroll listener rather than
-  // per-frame layout reads, so it stays smooth on a phone.
+  // One rAF-throttled scroll listener drives both the nav state and the
+  // hero parallax, rather than a listener and a layout read per frame.
   useEffect(() => {
     let frame = 0;
     function onScroll() {
@@ -135,10 +127,9 @@ export default function JawaiPage() {
       frame = requestAnimationFrame(() => {
         frame = 0;
         const y = window.scrollY;
-        setScrolled(y > 80);
+        setScrolled(y > 40);
         if (parallaxRef.current) {
-          parallaxRef.current.style.transform = `translate3d(0, ${y * 0.28}px, 0)`;
-          parallaxRef.current.style.opacity = String(Math.max(0, 1 - y / 620));
+          parallaxRef.current.style.transform = `translate3d(0, ${y * 0.18}px, 0)`;
         }
       });
     }
@@ -150,441 +141,481 @@ export default function JawaiPage() {
     };
   }, []);
 
+  function scrollRail(direction: -1 | 1) {
+    const rail = railRef.current;
+    if (!rail) return;
+    const card = rail.firstElementChild as HTMLElement | null;
+    const step = card ? card.offsetWidth + 16 : 280;
+    rail.scrollBy({ left: step * direction, behavior: "smooth" });
+    setSlide((current) =>
+      Math.max(0, Math.min(HIGHLIGHTS.length - 1, current + direction))
+    );
+  }
+
   const seatsLeft = Math.max(0, settings.totalSeats - settings.seatsBooked);
-  const groupPrice =
+  const groupTotal =
     settings.pricePerPerson * settings.groupSize - settings.groupDiscountAmount;
   const dates =
     settings.startDate && settings.endDate
       ? `${formatDate(settings.startDate)} — ${formatDate(settings.endDate)}`
       : null;
-
   const ctaHref = loading ? "#" : user ? "/book" : "/login?next=/book";
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-neutral-950 text-white">
-      {/* ---------------------------------------------------- sticky nav */}
-      <nav
-        className={`no-print fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
-          scrolled
-            ? "border-b border-white/10 bg-neutral-950/85 py-3 backdrop-blur"
-            : "border-b border-transparent py-5"
-        }`}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <Mountain className="h-5 w-5 text-amber-500" />
-            <span>APC Club</span>
-            <span className="text-neutral-500">/</span>
-            <span className="text-amber-500">Jawai</span>
+    <div className="min-h-screen bg-[#c3d2d7] px-3 py-4 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-[26px] bg-white shadow-[0_20px_70px_rgba(15,35,45,0.18)]">
+        {/* ----------------------------------------------------------- nav */}
+        <nav
+          className={`no-print sticky top-0 z-50 flex items-center justify-between gap-4 bg-white/95 px-5 backdrop-blur transition-all duration-300 sm:px-8 ${
+            scrolled ? "border-b border-neutral-200 py-3" : "py-5"
+          }`}
+        >
+          <Link href="/" className="flex items-center gap-2">
+            <Mountain className="h-5 w-5 text-[#16323f]" />
+            <span className="text-base font-bold tracking-tight text-[#16323f]">
+              APC
+              <span className="font-light text-neutral-400">/</span>
+              <span className="text-[#e0a12a]">jawai</span>
+            </span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Link
-              href={user ? "/book" : "/login"}
-              className="hidden text-sm text-neutral-300 hover:text-white sm:block"
-            >
-              {user ? "My booking" : "Sign in"}
-            </Link>
-            <Link href={ctaHref}>
-              <Button size="sm">Book a seat</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
 
-      {/* -------------------------------------------------------- hero */}
-      <header className="relative flex min-h-[92vh] flex-col items-center justify-center px-6 text-center">
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="animate-glow absolute -top-40 left-1/2 h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-amber-500/25 blur-[130px]" />
-          <div
-            className="animate-glow absolute bottom-0 -right-32 h-[26rem] w-[26rem] rounded-full bg-orange-600/20 blur-[110px]"
-            style={{ animationDelay: "-6s" }}
-          />
-          {/* Drop a photo at public/jawai/hero.jpg and it takes over here. */}
-          <div className="absolute inset-0 bg-[url('/jawai/hero.jpg')] bg-cover bg-center opacity-25" />
-          <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/40 via-neutral-950/70 to-neutral-950" />
-        </div>
-
-        <div ref={parallaxRef} className="relative">
-          <p
-            className="animate-fade-up text-xs font-semibold uppercase tracking-[0.4em] text-amber-500"
-            style={{ animationDelay: "80ms" }}
-          >
-            APC Club presents
-          </p>
-
-          <h1
-            className="animate-fade-up mt-6 text-5xl font-semibold leading-[1.02] tracking-tight sm:text-7xl md:text-8xl"
-            style={{ animationDelay: "160ms" }}
-          >
-            Jawai
-            <span className="block bg-gradient-to-r from-amber-400 via-amber-200 to-orange-400 bg-clip-text text-transparent">
-              Safari
-            </span>
-          </h1>
-
-          <p
-            className="animate-fade-up mx-auto mt-7 max-w-xl text-base leading-relaxed text-neutral-300 sm:text-lg"
-            style={{ animationDelay: "260ms" }}
-          >
-            {settings.tagline || DEFAULT_SETTINGS.tagline} Two days in leopard country, and
-            a bus that leaves from the front gate.
-          </p>
-
-          <div
-            className="animate-fade-up mt-8 flex flex-wrap items-center justify-center gap-3 text-sm text-neutral-300"
-            style={{ animationDelay: "340ms" }}
-          >
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2">
-              <MapPin className="h-4 w-4 text-amber-500" />
-              {settings.destination || DEFAULT_SETTINGS.destination}
-            </span>
-            {dates && (
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2">
-                <CalendarDays className="h-4 w-4 text-amber-500" />
-                {dates}
-              </span>
-            )}
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2">
-              <Users className="h-4 w-4 text-amber-500" />
-              {settings.bookingsOpen
-                ? `${seatsLeft} of ${settings.totalSeats} seats left`
-                : "Bookings closed"}
-            </span>
-          </div>
-
-          <div
-            className="animate-fade-up mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center"
-            style={{ animationDelay: "420ms" }}
-          >
-            <Link href={ctaHref}>
-              <Button size="lg" className="w-full sm:w-auto">
-                Book your seat — {rupees(settings.pricePerPerson)}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <a
-              href="#trip"
-              className="text-sm text-neutral-400 underline-offset-4 hover:text-white hover:underline"
-            >
-              See what the two days look like
+          <div className="hidden items-center gap-7 text-sm font-medium text-neutral-600 md:flex">
+            <a href="#trip" className="transition-colors hover:text-[#16323f]">
+              The Trip
+            </a>
+            <a href="#highlights" className="transition-colors hover:text-[#16323f]">
+              Highlights
+            </a>
+            <a href="#included" className="transition-colors hover:text-[#16323f]">
+              What&apos;s Included
+            </a>
+            <a href="#how" className="transition-colors hover:text-[#16323f]">
+              How to Book
             </a>
           </div>
-        </div>
 
-        <div
-          aria-hidden
-          className="animate-float absolute bottom-8 text-neutral-500"
-          style={{ animationDelay: "1s" }}
-        >
-          <ChevronDown className="h-6 w-6" />
-        </div>
-      </header>
+          <div className="flex items-center gap-3">
+            {user && (
+              <Link
+                href="/book"
+                className="hidden text-sm font-medium text-neutral-600 hover:text-[#16323f] sm:block"
+              >
+                My booking
+              </Link>
+            )}
+            <Link
+              href={ctaHref}
+              className="rounded-full bg-[#16323f] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0f242e]"
+            >
+              Book now
+            </Link>
+          </div>
+        </nav>
 
-      {/* ------------------------------------------------------ marquee */}
-      <div
-        aria-hidden
-        className="no-print relative flex overflow-hidden border-y border-white/10 bg-white/[0.03] py-4"
-      >
-        <div className="animate-marquee flex shrink-0 gap-8 whitespace-nowrap pr-8 text-sm uppercase tracking-[0.3em] text-neutral-500">
-          {Array.from({ length: 2 }).map((_, copy) => (
-            <span key={copy} className="flex gap-8">
-              {[
-                "Leopard hills",
-                "Jawai Bandh",
-                "Rabari country",
-                "Open jeeps",
-                "Bonfire",
-                "Sunrise safari",
-                "Granite kopjes",
-              ].map((word) => (
-                <span key={word} className="flex items-center gap-8">
-                  {word}
-                  <span className="text-amber-600">&bull;</span>
+        {/* --------------------------------------------------------- hero */}
+        <header className="px-3 pb-6 sm:px-5">
+          <div className="relative flex min-h-[430px] items-center justify-center overflow-hidden rounded-[20px] bg-gradient-to-br from-emerald-900 via-stone-800 to-slate-900 sm:min-h-[520px]">
+            <div aria-hidden className="absolute inset-0 overflow-hidden">
+              {/* Drop a photo at public/jawai/hero.jpg and it takes over here. */}
+              <div
+                ref={parallaxRef}
+                className="absolute -inset-y-16 inset-x-0 bg-[url('/jawai/hero.jpg')] bg-cover bg-center opacity-70"
+              />
+              <div className="animate-glow absolute -top-24 left-1/3 h-[26rem] w-[26rem] rounded-full bg-amber-500/20 blur-[110px]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/35" />
+            </div>
+
+            <div className="relative w-full px-6 py-16 text-center sm:px-10">
+              <h1 className="animate-fade-up text-[clamp(3.2rem,13vw,8.5rem)] font-extrabold leading-[0.85] tracking-tighter text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+                JAWAI
+                <span className="ml-3 inline-block align-baseline pb-[0.12em] text-[0.16em] font-semibold tracking-[0.32em] text-white/75">
+                  SAFARI
                 </span>
+              </h1>
+
+              <p
+                className="animate-fade-up mx-auto mt-6 max-w-lg text-sm leading-relaxed text-white/85 sm:text-base"
+                style={{ animationDelay: "140ms" }}
+              >
+                {settings.tagline || DEFAULT_SETTINGS.tagline} A full day in leopard
+                country with the APC Club — bus, food and the safari, all in one booking.
+              </p>
+
+              <div
+                className="animate-fade-up mt-8 flex flex-wrap items-center justify-center gap-3"
+                style={{ animationDelay: "230ms" }}
+              >
+                <Link
+                  href={ctaHref}
+                  className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#16323f] shadow-lg transition-transform hover:scale-[1.03]"
+                >
+                  Book Your Seat
+                </Link>
+                <a
+                  href="#highlights"
+                  className="rounded-full border border-white/50 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15"
+                >
+                  Explore the Trip
+                </a>
+              </div>
+
+              <div
+                className="animate-fade-up mt-9 flex flex-wrap items-center justify-center gap-2 text-xs text-white/80"
+                style={{ animationDelay: "320ms" }}
+              >
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {settings.destination || DEFAULT_SETTINGS.destination}
+                </span>
+                {dates && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {dates}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  {settings.bookingsOpen
+                    ? `${seatsLeft} of ${settings.totalSeats} seats left`
+                    : "Bookings closed"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* --------------------------------------------------- why / stats */}
+        <section id="trip" className="px-6 py-14 sm:px-10 sm:py-20">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-14">
+            <Reveal>
+              <h2 className="text-2xl font-semibold leading-snug tracking-tight text-[#16323f] sm:text-[1.7rem]">
+                Why Students Book Jawai
+                <br />
+                With the APC Club
+              </h2>
+              <p className="mt-5 max-w-md text-sm leading-relaxed text-neutral-600">
+                From the leopard hills to the bonfire, we make getting there easy, safe and
+                genuinely fun — one price, one booking, and people who know the place.
+              </p>
+
+              <div className="mt-7 flex items-center gap-4 text-[#16323f]">
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="APC Club on Instagram"
+                  className="transition-opacity hover:opacity-60"
+                >
+                  {/* Inline, because lucide-react v1 dropped brand icons. */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    className="h-5 w-5"
+                    aria-hidden
+                  >
+                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                    <circle cx="12" cy="12" r="4" />
+                    <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
+                  </svg>
+                </a>
+                <span className="text-neutral-300">|</span>
+                {settings.contactPhone && (
+                  <span className="text-sm text-neutral-600">
+                    {settings.contactName || "Trip lead"} · {settings.contactPhone}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-12 grid grid-cols-3 gap-4">
+                {[
+                  { icon: Users, value: `${settings.totalSeats}`, label: "Seats on this trip" },
+                  { icon: CalendarDays, value: "1 day", label: "Out and back" },
+                  {
+                    icon: Sparkles,
+                    value: `${settings.maxSeatsPerBooking}`,
+                    label: "Friends per booking",
+                  },
+                ].map((stat, index) => {
+                  const Icon = stat.icon;
+                  return (
+                    <Reveal key={stat.label} delay={index * 90}>
+                      <div className="text-center">
+                        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#16323f]">
+                          <Icon className="h-5 w-5 text-white" />
+                        </div>
+                        <p className="mt-3 text-lg font-bold text-[#16323f]">{stat.value}</p>
+                        <p className="mt-0.5 text-[11px] leading-tight text-neutral-500">
+                          {stat.label}
+                        </p>
+                      </div>
+                    </Reveal>
+                  );
+                })}
+              </div>
+            </Reveal>
+
+            <div className="space-y-4">
+              {FEATURES.map((feature, index) => {
+                const Icon = feature.icon;
+                return (
+                  <Reveal key={feature.title} delay={index * 110}>
+                    <div className="flex gap-4 rounded-2xl bg-[#8ea3b5] p-5 text-white transition-transform hover:translate-x-1">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/95">
+                        <Icon className="h-5 w-5 text-[#16323f]" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">{feature.title}</h3>
+                        <p className="mt-1.5 text-xs leading-relaxed text-white/85">
+                          {feature.body}
+                        </p>
+                      </div>
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------- highlights */}
+        <section id="highlights" className="px-3 sm:px-5">
+          <div className="rounded-[20px] bg-[#eef1f3] px-6 py-10 sm:px-9 sm:py-12">
+            <Reveal>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <h2 className="text-xl font-semibold tracking-tight text-[#16323f] sm:text-2xl">
+                  Trip Highlights
+                </h2>
+                <p className="max-w-sm text-sm text-neutral-600">
+                  Leave campus early, chase leopards through granite hills, and be back
+                  the same night. Here&apos;s what the day actually looks like.
+                </p>
+              </div>
+            </Reveal>
+
+            <div
+              ref={railRef}
+              className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {HIGHLIGHTS.map((item, index) => (
+                <Reveal
+                  key={item.slug}
+                  delay={index * 90}
+                  className="w-[58%] shrink-0 snap-start sm:w-[calc(50%-8px)] lg:w-[calc(25%-12px)]"
+                >
+                  <div
+                    className={`group relative h-[210px] overflow-hidden rounded-2xl bg-gradient-to-br ${item.accent} sm:h-[240px]`}
+                    style={{
+                      backgroundImage: `url('/jawai/${item.slug}.jpg')`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/20 transition-opacity group-hover:from-black/85" />
+
+                    <span className="absolute right-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-[#16323f]">
+                      {item.tag}
+                    </span>
+
+                    <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+                      <h3 className="text-base font-bold leading-tight">{item.name}</h3>
+                      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-white/85">
+                        {item.blurb}
+                        <span className="text-white/40">|</span>
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        {item.rating}
+                      </p>
+                      <p className="mt-1.5 flex items-center gap-1 text-[11px] text-white/70">
+                        <MapPin className="h-3 w-3" />
+                        {item.location}
+                      </p>
+                    </div>
+                  </div>
+                </Reveal>
               ))}
-            </span>
-          ))}
-        </div>
-      </div>
+            </div>
 
-      {/* ---------------------------------------------------- highlights */}
-      <section id="trip" className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-        <Reveal>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">
-            Why Jawai
-          </p>
-          <h2 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
-            Not a resort trip. A place that is still genuinely wild.
-          </h2>
-        </Reveal>
+            <div className="mt-6 flex items-center justify-between">
+              <Link
+                href={ctaHref}
+                className="rounded-full bg-[#16323f] px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#0f242e]"
+              >
+                Book your seat
+              </Link>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {HIGHLIGHTS.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <Reveal key={item.title} delay={index * 110}>
-                <div className="h-full rounded-2xl border border-white/10 bg-white/[0.03] p-7 transition-colors hover:border-amber-500/40">
-                  <Icon className="h-7 w-7 text-amber-500" />
-                  <h3 className="mt-5 text-lg font-semibold">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-neutral-400">{item.body}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => scrollRail(-1)}
+                  aria-label="Previous highlight"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-400 text-[#16323f] transition-colors hover:bg-white disabled:opacity-40"
+                  disabled={slide === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => scrollRail(1)}
+                  aria-label="Next highlight"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-400 text-[#16323f] transition-colors hover:bg-white disabled:opacity-40"
+                  disabled={slide >= HIGHLIGHTS.length - 1}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------ price/included */}
+        <section id="included" className="px-3 py-10 sm:px-5 sm:py-14">
+          <div className="grid gap-4 md:grid-cols-[1.05fr_1fr_1fr]">
+            <Reveal>
+              <div className="flex h-full flex-col justify-between rounded-2xl bg-[#8ea3b5] p-7 text-white">
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight">What&apos;s Included</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-white/85">
+                    One price covers the whole day. Nothing extra is collected once
+                    you&apos;re on the bus.
+                  </p>
+
+                  <ul className="mt-6 space-y-2.5 text-sm">
+                    {[
+                      { icon: Bus, label: "Return bus from campus" },
+                      { icon: Utensils, label: "All food through the day" },
+                      { icon: Binoculars, label: "Open-jeep leopard safari" },
+                      { icon: Sunset, label: "Jawai Bandh and sunset point" },
+                      { icon: ShieldCheck, label: "First aid and trip leads" },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <li key={item.label} className="flex items-center gap-2.5">
+                          <Icon className="h-4 w-4 shrink-0 text-white/70" />
+                          {item.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
 
-      {/* ----------------------------------------------------- itinerary */}
-      <section className="border-y border-white/10 bg-white/[0.02]">
-        <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
+                <Link
+                  href={ctaHref}
+                  className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-[#16323f] px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#0f242e]"
+                >
+                  Book your seat
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </Reveal>
+
+            <Reveal delay={110}>
+              <div className="flex h-full flex-col justify-between rounded-2xl bg-gradient-to-br from-stone-700 via-stone-800 to-neutral-900 p-7 text-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div className="mt-8">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+                    Going solo or in a pair
+                  </p>
+                  <p className="mt-3 text-4xl font-bold tracking-tight">
+                    {rupees(settings.pricePerPerson)}
+                  </p>
+                  <p className="mt-1 text-sm text-white/70">per person</p>
+                  <p className="mt-4 text-xs leading-relaxed text-white/70">
+                    Book one to {settings.groupSize - 1} seats. Everything above included.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={200}>
+              <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-amber-700 via-amber-800 to-stone-900 p-7 text-white">
+                <span className="absolute right-4 top-4 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold text-[#16323f]">
+                  Best value
+                </span>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div className="mt-8">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                    All {settings.groupSize} together
+                  </p>
+                  <p className="mt-3 text-4xl font-bold tracking-tight">
+                    {rupees(groupTotal)}
+                  </p>
+                  <p className="mt-1 text-sm text-white/70">
+                    for {settings.groupSize} — {rupees(settings.groupDiscountAmount)} off
+                  </p>
+                  <p className="mt-4 text-xs leading-relaxed text-white/75">
+                    Instead of {rupees(settings.pricePerPerson * settings.groupSize)}. Got a
+                    promo code? You get whichever saves more — they don&apos;t stack.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ----------------------------------------------------- how to book */}
+        <section id="how" className="px-6 pb-16 sm:px-10 sm:pb-20">
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">
-              The plan
-            </p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
-              Two days, roughly like this
+            <h2 className="text-xl font-semibold tracking-tight text-[#16323f] sm:text-2xl">
+              Booking made as easy as 1-2-3.
             </h2>
           </Reveal>
 
-          <div className="mt-14 grid gap-10 md:grid-cols-2">
-            {ITINERARY.map((day, dayIndex) => (
-              <Reveal key={day.day} delay={dayIndex * 140}>
-                <div className="rounded-2xl border border-white/10 bg-neutral-950/60 p-7">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-500">
-                    {day.day}
-                  </h3>
-                  <ol className="mt-6 space-y-6">
-                    {day.items.map((item) => (
-                      <li key={item.time} className="relative border-l border-white/10 pl-6">
-                        <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full bg-amber-500" />
-                        <p className="text-xs uppercase tracking-wider text-neutral-500">
-                          {item.time}
-                        </p>
-                        <p className="mt-1 text-sm text-neutral-200">{item.text}</p>
-                      </li>
-                    ))}
-                  </ol>
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {STEPS.map((step, index) => (
+              <Reveal key={step.n} delay={index * 110}>
+                <div className="flex gap-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-[#16323f] text-base font-bold text-[#16323f]">
+                    {step.n}
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#16323f]">{step.title}</h3>
+                    <p className="mt-1.5 text-xs leading-relaxed text-neutral-600">
+                      {step.body}
+                    </p>
+                  </div>
                 </div>
               </Reveal>
             ))}
           </div>
 
           <Reveal delay={200}>
-            <p className="mt-10 text-xs text-neutral-500">
-              Safari timings shift with the light and with the forest department, so treat
-              this as the shape of the trip rather than a timetable.
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------ included */}
-      <section className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-        <Reveal>
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-            What&apos;s in the price
-          </h2>
-        </Reveal>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {INCLUDED.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <Reveal key={item.label} delay={index * 70}>
-                <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4">
-                  <Icon className="h-5 w-5 shrink-0 text-amber-500" />
-                  <span className="text-sm text-neutral-200">{item.label}</span>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------- gallery */}
-      <section aria-label="Photos from Jawai" className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {["kopjes", "leopard", "bandh"].map((name, index) => (
-            <Reveal key={name} delay={index * 100}>
-              {/* Drop public/jawai/{name}.jpg in and the gradient is replaced. */}
-              <div
-                className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-amber-900/40 via-neutral-900 to-neutral-950"
-                style={{
-                  backgroundImage: `url('/jawai/${name}.jpg')`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
-              >
-                <div className="absolute inset-0 flex items-end bg-gradient-to-t from-neutral-950/80 to-transparent p-5">
-                  <span className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-neutral-300">
-                    <Camera className="h-3.5 w-3.5" />
-                    {name}
-                  </span>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------- pricing */}
-      <section className="border-y border-white/10 bg-white/[0.02]">
-        <div className="mx-auto max-w-4xl px-6 py-24 sm:py-32">
-          <Reveal>
-            <div className="overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 to-transparent">
-              <div className="p-8 text-center sm:p-12">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">
-                  Per person
-                </p>
-                <p className="mt-4 text-6xl font-semibold tracking-tight sm:text-7xl">
-                  {rupees(settings.pricePerPerson)}
-                </p>
-                <p className="mt-4 text-sm text-neutral-300">
-                  Everything above included. Nothing extra collected on the trip.
-                </p>
-
-                <div className="mx-auto mt-9 max-w-md rounded-2xl border border-white/10 bg-neutral-950/60 p-6">
-                  <p className="flex items-center justify-center gap-2 text-sm font-semibold text-amber-400">
-                    <Users className="h-4 w-4" />
-                    Book all {settings.groupSize} seats together
-                  </p>
-                  <p className="mt-3 text-sm text-neutral-300">
-                    {rupees(settings.groupDiscountAmount)} off the booking —{" "}
-                    <span className="font-semibold text-white">{rupees(groupPrice)}</span> for{" "}
-                    {settings.groupSize} instead of{" "}
-                    {rupees(settings.pricePerPerson * settings.groupSize)}.
-                  </p>
-                  <p className="mt-3 text-xs text-neutral-500">
-                    Got a promo code? Enter it at checkout — you&apos;ll automatically get
-                    whichever saves you more. They don&apos;t stack.
-                  </p>
-                </div>
-
-                <div className="mt-9">
-                  <Link href={ctaHref}>
-                    <Button size="lg" disabled={!settings.bookingsOpen}>
-                      {settings.bookingsOpen ? "Book now" : "Bookings are closed"}
-                      {settings.bookingsOpen && <ArrowRight className="h-4 w-4" />}
-                    </Button>
-                  </Link>
-                  <p className="mt-4 text-xs text-neutral-500">
-                    Up to {settings.maxSeatsPerBooking} students on one booking, including you.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* -------------------------------------------------------- safety */}
-      <section className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
-        <div className="grid gap-14 md:grid-cols-2">
-          <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-500">
-              Before you go
-            </p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              What to carry
-            </h2>
-            <ul className="mt-8 space-y-4">
-              {CARRY.map((item) => (
-                <li key={item} className="flex gap-3 text-sm text-neutral-300">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-
-          <Reveal delay={140}>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-7">
-              <ShieldCheck className="h-7 w-7 text-amber-500" />
-              <h3 className="mt-5 text-lg font-semibold">Why we ask for medical details</h3>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-                We are taking a bus full of students a few hours from campus into a rural
-                area. If someone needs help, the trip leads need their blood group, any
-                condition they have, and who to call — right then, not after phoning around.
-              </p>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-                Only trip admins can read it. It is never shown publicly, never shared with
-                anyone outside the club, and it is carried on the bus purely so someone can
-                act fast if they have to.
-              </p>
-              {settings.contactPhone && (
-                <p className="mt-6 flex items-center gap-2 text-sm text-neutral-300">
-                  <Phone className="h-4 w-4 text-amber-500" />
-                  {settings.contactName || "Trip lead"} — {settings.contactPhone}
+            <div className="mt-12 flex flex-col items-center gap-4 rounded-2xl bg-[#16323f] px-6 py-10 text-center text-white">
+              <h3 className="text-2xl font-semibold tracking-tight">
+                {settings.bookingsOpen ? "Seats go fast." : "Bookings are closed for now."}
+              </h3>
+              {settings.bookingsOpen && (
+                <p className="text-sm text-white/70">
+                  {seatsLeft} of {settings.totalSeats} still open.
                 </p>
               )}
+              <Link
+                href={ctaHref}
+                className={`mt-2 inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold transition-transform ${
+                  settings.bookingsOpen
+                    ? "bg-white text-[#16323f] hover:scale-[1.03]"
+                    : "pointer-events-none bg-white/30 text-white/60"
+                }`}
+              >
+                {settings.bookingsOpen ? "Book a seat" : "Closed"}
+                {settings.bookingsOpen && <ArrowRight className="h-4 w-4" />}
+              </Link>
             </div>
           </Reveal>
-        </div>
-      </section>
 
-      {/* ----------------------------------------------------------- faq */}
-      <section className="border-t border-white/10 bg-white/[0.02]">
-        <div className="mx-auto max-w-3xl px-6 py-24 sm:py-32">
-          <Reveal>
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Questions people actually ask
-            </h2>
-          </Reveal>
-          <div className="mt-12 divide-y divide-white/10 border-y border-white/10">
-            {FAQS.map((faq, index) => (
-              <Reveal key={faq.q} delay={index * 60}>
-                <div>
-                  <button
-                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                    aria-expanded={openFaq === index}
-                    className="flex w-full items-center justify-between gap-4 py-5 text-left"
-                  >
-                    <span className="text-sm font-medium sm:text-base">{faq.q}</span>
-                    <ChevronDown
-                      className={`h-4 w-4 shrink-0 text-amber-500 transition-transform duration-300 ${
-                        openFaq === index ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  <div
-                    className="grid transition-all duration-300"
-                    style={{ gridTemplateRows: openFaq === index ? "1fr" : "0fr" }}
-                  >
-                    <div className="overflow-hidden">
-                      <p className="pb-5 text-sm leading-relaxed text-neutral-400">{faq.a}</p>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* -------------------------------------------------------- footer */}
-      <footer className="mx-auto max-w-6xl px-6 py-20 text-center">
-        <Reveal>
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            {settings.bookingsOpen ? "Seats go fast." : "Bookings are closed for now."}
-          </h2>
-          {settings.bookingsOpen && (
-            <p className="mt-4 text-sm text-neutral-400">
-              {seatsLeft} of {settings.totalSeats} still open.
-            </p>
-          )}
-          <div className="mt-8">
-            <Link href={ctaHref}>
-              <Button size="lg" disabled={!settings.bookingsOpen}>
-                Book a seat
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <p className="mt-14 text-xs text-neutral-600">
+          <p className="mt-10 text-center text-[11px] text-neutral-400">
             APC Club, NIFT Jodhpur
             {settings.contactPhone ? ` — ${settings.contactPhone}` : ""}
           </p>
-        </Reveal>
-      </footer>
+        </section>
+      </div>
+
+      <div aria-hidden className="flex justify-center py-6 text-[#16323f]/40">
+        <ChevronDown className="animate-float h-5 w-5" />
+      </div>
     </div>
   );
 }

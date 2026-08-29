@@ -1,4 +1,10 @@
-import { PricingBreakdown, PromoCode, TripSettings } from "./types";
+import {
+  PricingBreakdown,
+  ProfitBreakdown,
+  PromoCode,
+  TripFinance,
+  TripSettings,
+} from "./types";
 
 /**
  * The single source of truth for what a booking costs. The booking form,
@@ -48,6 +54,36 @@ export function quote(
     discountApplied,
     discount,
     total: subtotal - discount,
+  };
+}
+
+/**
+ * Splits a booking into what the trip costs and what the club keeps.
+ *
+ * The ticket price is one number to the student (2099), but it is really
+ * two: the seat's actual cost (2000 - bus, stay, safari) and the club's
+ * margin (99). The cost is fixed and has to be paid to suppliers whatever
+ * happens, so **a discount comes out of the margin, never out of the
+ * cost**. Five seats at a 199 group discount collects 10,296, of which
+ * 10,000 is cost and 296 is what the club actually keeps.
+ *
+ * Admin-only: students never see any of this. It is computed on demand
+ * from jawaiTrip/finance rather than stored on the booking, so the margin
+ * cannot leak through a booking the student is allowed to read.
+ */
+export function profit(
+  pricing: PricingBreakdown,
+  finance: Pick<TripFinance, "baseCostPerPerson">
+): ProfitBreakdown {
+  const cost = finance.baseCostPerPerson * pricing.seats;
+  const grossProfit = pricing.subtotal - cost;
+
+  return {
+    collected: pricing.total,
+    cost,
+    grossProfit,
+    discount: pricing.discount,
+    netProfit: pricing.total - cost,
   };
 }
 

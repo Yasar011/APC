@@ -52,6 +52,33 @@ export interface Traveller {
   emergencyContactRelation: string;
 }
 
+/**
+ * Money that is never shown to students.
+ *
+ * Kept in its own database node (jawaiTrip/finance) rather than in
+ * settings, because settings are world-readable so the public trip page
+ * can show the price - and the margin is nobody's business but the club's.
+ */
+export interface TripFinance {
+  /** What one seat actually costs the club to run: buses, stay, safari. */
+  baseCostPerPerson: number;
+  updatedAt: number;
+}
+
+/** Cost vs profit for one booking. Admin-only; computed, never stored. */
+export interface ProfitBreakdown {
+  /** What the students actually paid, after any discount. */
+  collected: number;
+  /** baseCostPerPerson x seats - the part that goes straight back out. */
+  cost: number;
+  /** Margin before any discount came off. */
+  grossProfit: number;
+  /** What came off the price. Discounts eat the margin, not the cost. */
+  discount: number;
+  /** grossProfit - discount. Negative means this booking loses money. */
+  netProfit: number;
+}
+
 export interface PricingBreakdown {
   seats: number;
   pricePerPerson: number;

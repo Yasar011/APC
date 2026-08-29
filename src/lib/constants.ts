@@ -22,18 +22,27 @@ export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
   CANCELLED: "bg-neutral-200 text-neutral-600",
 };
 
+/**
+ * What a seat costs the club to run. Admin-only - lives in jawaiTrip/finance,
+ * not in the world-readable settings node.
+ */
+export const DEFAULT_FINANCE = {
+  baseCostPerPerson: 2000,
+  updatedAt: 0,
+};
+
 /** Used only until an admin saves real settings to the database. */
 export const DEFAULT_SETTINGS = {
   tripName: "Jawai Safari",
-  tagline: "Leopard country, granite hills, and two days off campus.",
+  tagline: "Leopard country, granite hills, and a day off campus.",
   destination: "Jawai Bandh, Pali, Rajasthan",
   startDate: "",
   endDate: "",
   pricePerPerson: 2099,
   groupSize: 5,
-  groupDiscountAmount: 99,
+  groupDiscountAmount: 199,
   maxSeatsPerBooking: 5,
-  totalSeats: 50,
+  totalSeats: 89,
   seatsBooked: 0,
   bookingsOpen: true,
   upiId: "",

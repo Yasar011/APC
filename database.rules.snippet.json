@@ -38,6 +38,11 @@
       ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true"
     },
 
+    "finance": {
+      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true"
+    },
+
     "admins": {
       ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
       ".write": false,
