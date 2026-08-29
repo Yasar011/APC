@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Jawai at dusk: granite dark, ochre light. */
+  --apc-sand: #e6b566;
+  --apc-amber: #f59e0b;
+  --apc-granite: #0c0a09;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------
+   Landing-page motion.
+   Pure CSS, so no animation library ships in the bundle and the
+   public page stays fast on a low-end phone. Every effect is
+   disabled under prefers-reduced-motion.
+   --------------------------------------------------------------- */
+
+@keyframes apc-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes apc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes apc-glow-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate3d(5%, -7%, 0) scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+@keyframes apc-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes apc-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* Plays on mount — for above-the-fold content. */
+.animate-fade-up {
+  animation: apc-fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: apc-fade-in 0.9s ease both;
+}
+
+.animate-glow {
+  animation: apc-glow-drift 15s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: apc-float 6s ease-in-out infinite;
+}
+
+.animate-marquee {
+  animation: apc-marquee 34s linear infinite;
+}
+
+/* Scroll-triggered reveal: hidden until <Reveal> adds .is-visible. */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition:
+    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-glow,
+  .animate-float,
+  .animate-marquee {
+    animation: none !important;
+  }
+
+  .reveal,
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ---------------------------------------------------------------
+   Print. The roster is carried onto the bus on paper as the
+   fallback for no signal at Jawai, so it has to print cleanly.
+   --------------------------------------------------------------- */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .print-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-tight {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

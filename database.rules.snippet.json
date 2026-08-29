@@ -1,0 +1,122 @@
+{
+  "___README___": [
+    "THIS IS A SNIPPET, NOT A COMPLETE RULES FILE. DO NOT DEPLOY IT ON ITS OWN.",
+    "",
+    "Realtime Database rules are one JSON tree for the entire database.",
+    "Publishing a file that contains only these rules would DELETE the rules",
+    "protecting APC's movie night and attractions data.",
+    "",
+    "To install: open the Firebase console -> Realtime Database -> Rules, and",
+    "paste the 'jawaiTrip' block below INSIDE your existing top-level 'rules'",
+    "object, as a sibling of the keys already there. Then Publish.",
+    "",
+    "It should end up looking like this:",
+    "",
+    "  {",
+    "    \"rules\": {",
+    "      \"movieNight\": { ...your existing rules, untouched... },",
+    "      \"attractions\": { ...your existing rules, untouched... },",
+    "      \"jawaiTrip\": { ...paste the block below here... }",
+    "    }",
+    "  }",
+    "",
+    "Delete this ___README___ key when you paste - it is documentation only.",
+    "",
+    "One-time setup afterwards: add your own account's UID under",
+    "jawaiTrip/admins/<uid> with the value true, from the console's Data tab.",
+    "Nobody can grant themselves admin, so the first one is added by hand.",
+    "Your UID is shown on the /admin page when you are signed in but not yet",
+    "an admin.",
+    "",
+    "No .indexOn entries are needed: every read here is a direct key lookup",
+    "or a whole-node read by an admin, never an orderByChild query."
+  ],
+
+  "jawaiTrip": {
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true"
+    },
+
+    "admins": {
+      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      ".write": false,
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "bookings": {
+      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+
+      "$bookingId": {
+        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
+
+        ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
+
+        ".validate": "newData.hasChildren(['bookerUid', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
+
+        "bookerUid": {
+          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+        },
+
+        "seats": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5"
+        },
+
+        "status": {
+          ".validate": "newData.isString() && (((newData.val() === 'AWAITING_PAYMENT' || newData.val() === 'PENDING_VERIFICATION') && (newData.parent().child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)) || ((newData.val() === 'CONFIRMED' || newData.val() === 'REJECTED' || newData.val() === 'CANCELLED') && root.child('jawaiTrip/admins').child(auth.uid).val() === true))"
+        },
+
+        "verifiedBy": {
+          ".validate": "!newData.exists() || root.child('jawaiTrip/admins').child(auth.uid).val() === true"
+        },
+
+        "$other": {
+          ".validate": true
+        }
+      }
+    },
+
+    "bookingsByUser": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)"
+      }
+    },
+
+    "bookingCodeIndex": {
+      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      "$bookingCode": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
+        ".validate": "newData.isString()"
+      }
+    },
+
+    "tickets": {
+      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+
+      "$ticketCode": {
+        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)"
+      }
+    },
+
+    "ticketsByBooking": {
+      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      "$bookingId": {
+        ".read": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)"
+      }
+    },
+
+    "promoCodes": {
+      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+
+      "$code": {
+        ".read": "auth != null"
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+// SNIPPET — do not deploy on its own.
+//
+// Storage rules, like database rules, are one file for the whole bucket.
+// If APC already has storage.rules with rules for other features, paste the
+// `match /jawaiTrip/...` block below INSIDE the existing
+// `match /b/{bucket}/o { ... }` block, alongside what is already there.
+//
+// If nothing uses Firebase Storage in this project yet, this whole file can
+// be used as-is: save it as storage.rules and publish it from the Firebase
+// console (Storage -> Rules).
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Payment screenshots. Students write only into their own folder, and
+    // only they and trip admins can read them back — a screenshot can show
+    // a bank balance, so it is never world-readable.
+    match /jawaiTrip/payments/{uid}/{fileName} {
+      allow read: if request.auth != null
+        && (request.auth.uid == uid || isJawaiAdmin());
+
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Storage rules can't read the Realtime Database, so trip admins are
+    // listed here as well. Keep this list in sync with jawaiTrip/admins in
+    // the database — both are needed: this one to view screenshots, that one
+    // to confirm bookings.
+    function isJawaiAdmin() {
+      return request.auth.uid in [
+        // 'PASTE_ADMIN_UID_HERE',
+      ];
+    }
+  }
+}
