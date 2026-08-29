@@ -29,7 +29,11 @@
     "an admin.",
     "",
     "No .indexOn entries are needed: every read here is a direct key lookup",
-    "or a whole-node read by an admin, never an orderByChild query."
+    "or a whole-node read by an admin, never an orderByChild query.",
+    "",
+    "The seat cap is read from jawaiTrip/settings/maxSeatsPerBooking, so",
+    "raising it in the admin UI takes effect here too - no rules edit needed.",
+    "Before settings exist it falls back to 5."
   ],
 
   "jawaiTrip": {
@@ -66,7 +70,7 @@
         },
 
         "seats": {
-          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5"
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= (root.child('jawaiTrip/settings/maxSeatsPerBooking').exists() ? root.child('jawaiTrip/settings/maxSeatsPerBooking').val() : 5)"
         },
 
         "status": {
