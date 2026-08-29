@@ -12,7 +12,9 @@ export function SetupNotice() {
   if (isFirebaseConfigured) return null;
 
   return (
-    <div className="no-print sticky top-0 z-[60] flex items-start gap-3 bg-amber-500 px-4 py-3 text-sm text-neutral-950">
+    // Pinned to the bottom rather than the top: the trip page has a fixed
+    // nav at top-0, and a banner there would sit on top of it.
+    <div className="no-print fixed inset-x-0 bottom-0 z-[60] flex items-start gap-3 bg-amber-500 px-4 py-3 text-sm text-neutral-950 shadow-[0_-4px_20px_rgba(0,0,0,0.25)]">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
       <p>
         <strong>Firebase isn&apos;t configured.</strong> Copy{" "}
