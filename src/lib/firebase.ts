@@ -4,26 +4,46 @@ import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
 
 /**
- * APC's existing Firebase project — the same one behind movie night and
- * attractions. Every value comes from the environment; nothing is hardcoded,
- * so this repo can be public.
+ * APC's Firebase project (`apc-movie`) — the same one behind movie night, so
+ * students sign in with the accounts they already have.
+ *
+ * These values are committed on purpose. A Firebase web config is not a
+ * secret: it is compiled into the JavaScript every visitor downloads, so
+ * anyone who opens the site can already read it. What protects the data is
+ * the Realtime Database and Storage rules, never the config being hidden.
+ * Committing it means a fresh clone runs with no setup, and Vercel needs no
+ * environment variables.
+ *
+ * Environment variables still win where they are set, so a throwaway
+ * Firebase project can be pointed at for testing without touching code.
  */
+const DEFAULTS = {
+  apiKey: "AIzaSyCEDUyZD20PYvHMe-CX-_n2MWRvENiggd8",
+  authDomain: "apc-movie.firebaseapp.com",
+  databaseURL: "https://apc-movie-default-rtdb.firebaseio.com",
+  projectId: "apc-movie",
+  storageBucket: "apc-movie.firebasestorage.app",
+  messagingSenderId: "849582804075",
+  appId: "1:849582804075:web:44831ccf1309b106a2b52e",
+};
+
 const config = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || DEFAULTS.apiKey,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || DEFAULTS.authDomain,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || DEFAULTS.databaseURL,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || DEFAULTS.projectId,
+  storageBucket:
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || DEFAULTS.storageBucket,
+  messagingSenderId:
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || DEFAULTS.messagingSenderId,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || DEFAULTS.appId,
 };
 
 /**
- * Whether real credentials are present. `getAuth()` throws
- * `auth/invalid-api-key` on an empty key, which would crash the production
- * build during prerendering — so unconfigured builds fall back to a
- * syntactically valid placeholder and the app shows a setup screen instead
- * of a stack trace. See <FirebaseNotConfigured /> in the root layout.
+ * True in normal use, now that the config ships with the code. Kept as a
+ * guard so that blanking the values out still degrades into a readable setup
+ * banner rather than an `auth/invalid-api-key` crash during the production
+ * build. See <SetupNotice /> in the root layout.
  */
 export const isFirebaseConfigured = Boolean(
   config.apiKey && config.databaseURL && config.projectId

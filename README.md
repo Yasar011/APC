@@ -31,26 +31,24 @@ APC data is read, written, or moved.
 
 ## Setup
 
-### 1. Environment
-
-```bash
-cp .env.example .env.local
-```
-
-Fill in APC's Firebase web config from **Firebase Console → Project settings → Your apps →
-SDK setup and configuration**.
-
-The one people miss is `NEXT_PUBLIC_FIREBASE_DATABASE_URL` — this app uses the Realtime
-Database and does nothing without it. It looks like
-`https://<project>-default-rtdb.firebaseio.com`.
-
-Until it's filled in, the app still builds and runs but shows a yellow "Firebase isn't
-configured" banner and can't sign anyone in.
+### 1. Run it
 
 ```bash
 npm install
 npm run dev
 ```
+
+That's the whole step. APC's Firebase config (project `apc-movie`) is committed in
+`src/lib/firebase.ts`, so there is no `.env.local` to create and nothing to configure on
+Vercel.
+
+A Firebase web config is deliberately not a secret — it is compiled into the JavaScript
+every visitor downloads, so anyone who opens the site can already read it. The database and
+storage rules below are what actually protect the data.
+
+To point at a different Firebase project (a throwaway one for testing), copy `.env.example`
+to `.env.local` and set the values there; environment variables override the committed
+defaults.
 
 ### 2. Database rules
 
