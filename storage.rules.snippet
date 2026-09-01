@@ -1,22 +1,22 @@
-// SNIPPET — do not deploy on its own.
+// SNIPPET — do not deploy on its own if Storage is already in use.
 //
-// Storage rules, like database rules, are one file for the whole bucket.
-// If APC already has storage.rules with rules for other features, paste the
-// `match /jawaiTrip/...` block below INSIDE the existing
-// `match /b/{bucket}/o { ... }` block, alongside what is already there.
+// Storage rules, like database rules, are one file for the whole bucket. If
+// APC already has rules here for other features (movie night screenshots,
+// say), paste the `match /jawaiTrip/...` block and the isJawaiAdmin()
+// function INSIDE the existing `match /b/{bucket}/o { ... }` block,
+// alongside what is already there.
 //
-// If nothing uses Firebase Storage in this project yet, this whole file can
-// be used as-is: save it as storage.rules and publish it from the Firebase
-// console (Storage -> Rules).
+// If nothing uses Firebase Storage in this project yet, publish this whole
+// file as-is: Firebase Console -> Storage -> Rules -> paste -> Publish.
 
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Payment screenshots. Students write only into their own folder, and
-    // only they and trip admins can read them back — a screenshot can show
-    // a bank balance, so it is never world-readable.
+    // Payment screenshots. A student writes only into their own folder, and
+    // only they and trip admins can read them back — a UPI screenshot shows
+    // a name and often a bank balance, so it is never world-readable.
     match /jawaiTrip/payments/{uid}/{fileName} {
       allow read: if request.auth != null
         && (request.auth.uid == uid || isJawaiAdmin());
@@ -27,13 +27,18 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Storage rules can't read the Realtime Database, so trip admins are
-    // listed here as well. Keep this list in sync with jawaiTrip/admins in
-    // the database — both are needed: this one to view screenshots, that one
-    // to confirm bookings.
+    // Storage rules cannot read the Realtime Database, so the `roles` node
+    // that grants admin everywhere else in this app is invisible here and
+    // trip admins have to be listed by hand.
+    //
+    // This is the ONE place admins are duplicated. Anyone who needs to open
+    // a payment screenshot must be in this list AND be roles/<uid> ==
+    // 'admin' in the database. Staff are deliberately absent: they scan
+    // people onto the bus and have no business seeing payments.
     function isJawaiAdmin() {
       return request.auth.uid in [
-        // 'PASTE_ADMIN_UID_HERE',
+        'kGmSLYoXlUgrdAfKogkfzmPWrrL2'
+        // add further admin uids here, comma separated
       ];
     }
   }
