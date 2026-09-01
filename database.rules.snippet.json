@@ -4,29 +4,20 @@
     "",
     "Realtime Database rules are one JSON tree for the entire database.",
     "Publishing a file that contains only these rules would DELETE the rules",
-    "protecting APC's movie night and attractions data.",
+    "protecting APC's movie night data (roles, settings, promoCodes,",
+    "movieSeats, bookings).",
     "",
     "To install: open the Firebase console -> Realtime Database -> Rules, and",
-    "paste the 'jawaiTrip' block below INSIDE your existing top-level 'rules'",
+    "paste the 'jawaiTrip' block below INSIDE the existing top-level 'rules'",
     "object, as a sibling of the keys already there. Then Publish.",
-    "",
-    "It should end up looking like this:",
-    "",
-    "  {",
-    "    \"rules\": {",
-    "      \"movieNight\": { ...your existing rules, untouched... },",
-    "      \"attractions\": { ...your existing rules, untouched... },",
-    "      \"jawaiTrip\": { ...paste the block below here... }",
-    "    }",
-    "  }",
     "",
     "Delete this ___README___ key when you paste - it is documentation only.",
     "",
-    "One-time setup afterwards: add your own account's UID under",
-    "jawaiTrip/admins/<uid> with the value true, from the console's Data tab.",
-    "Nobody can grant themselves admin, so the first one is added by hand.",
-    "Your UID is shown on the /admin page when you are signed in but not yet",
-    "an admin.",
+    "ADMINS: this app reuses APC's existing top-level `roles` node rather than",
+    "keeping its own list. Anyone who is already roles/<uid> == 'admin' (or the",
+    "founding uid hardcoded in the rules) is a trip admin with nothing to set",
+    "up. roles/<uid> == 'staff' can scan people onto the bus and nothing else -",
+    "no payments, no roster, no margin.",
     "",
     "No .indexOn entries are needed: every read here is a direct key lookup",
     "or a whole-node read by an admin, never an orderByChild query.",
@@ -35,94 +26,80 @@
     "raising it in the admin UI takes effect here too - no rules edit needed.",
     "Before settings exist it falls back to 5."
   ],
-
   "jawaiTrip": {
     "settings": {
       ".read": true,
-      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true"
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')"
     },
-
     "finance": {
-      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
-      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true"
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')"
     },
-
-    "admins": {
-      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
-      ".write": false,
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid"
-      }
-    },
-
     "bookings": {
-      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
-
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
       "$bookingId": {
-        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
-
-        ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
-
+        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
         ".validate": "newData.hasChildren(['bookerUid', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
-
         "bookerUid": {
           ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
         },
-
         "seats": {
           ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= (root.child('jawaiTrip/settings/maxSeatsPerBooking').exists() ? root.child('jawaiTrip/settings/maxSeatsPerBooking').val() : 5)"
         },
-
         "status": {
-          ".validate": "newData.isString() && (((newData.val() === 'AWAITING_PAYMENT' || newData.val() === 'PENDING_VERIFICATION') && (newData.parent().child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)) || ((newData.val() === 'CONFIRMED' || newData.val() === 'REJECTED' || newData.val() === 'CANCELLED') && root.child('jawaiTrip/admins').child(auth.uid).val() === true))"
+          ".validate": "newData.isString() && (((newData.val() === 'AWAITING_PAYMENT' || newData.val() === 'PENDING_VERIFICATION') && (newData.parent().child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))) || ((newData.val() === 'CONFIRMED' || newData.val() === 'REJECTED' || newData.val() === 'CANCELLED') && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')))"
         },
-
         "verifiedBy": {
-          ".validate": "!newData.exists() || root.child('jawaiTrip/admins').child(auth.uid).val() === true"
+          ".validate": "!newData.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')"
         },
-
         "$other": {
           ".validate": true
         }
       }
     },
-
     "bookingsByUser": {
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
-        ".write": "auth != null && (auth.uid === $uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)"
+        ".read": "auth != null && (auth.uid === $uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".write": "auth != null && (auth.uid === $uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))"
       }
     },
-
     "bookingCodeIndex": {
-      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
       "$bookingCode": {
         ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() || root.child('jawaiTrip/admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (!data.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
         ".validate": "newData.isString()"
       }
     },
-
     "tickets": {
-      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
-      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
-
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
       "$ticketCode": {
-        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)"
+        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff'))",
+        "boarded": {
+          ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+          ".validate": "newData.isBoolean()"
+        },
+        "boardedAt": {
+          ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+          ".validate": "newData.isNumber()"
+        },
+        "boardedBy": {
+          ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+          ".validate": "newData.isString()"
+        }
       }
     },
-
     "ticketsByBooking": {
-      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
       "$bookingId": {
-        ".read": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || root.child('jawaiTrip/admins').child(auth.uid).val() === true)"
+        ".read": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff'))"
       }
     },
-
     "promoCodes": {
-      ".read": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
-      ".write": "auth != null && root.child('jawaiTrip/admins').child(auth.uid).val() === true",
-
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
       "$code": {
         ".read": "auth != null"
       }

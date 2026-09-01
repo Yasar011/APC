@@ -3,12 +3,17 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signOut as firebaseSignOut, User } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
-import { readIsAdmin } from "@/lib/trip";
+import { readRole } from "@/lib/trip";
+import { Role } from "@/lib/types";
 
 interface AuthValue {
   user: User | null;
-  /** True when this account is listed under jawaiTrip/admins. */
+  /** From APC's shared `roles` node - the same one movie night uses. */
+  role: Role;
+  /** Full access: verify payments, edit settings, see the margin. */
   isAdmin: boolean;
+  /** Admins, plus staff — enough to scan people onto the bus. */
+  canScan: boolean;
   loading: boolean;
   displayName: string;
   signOut: () => Promise<void>;
@@ -16,7 +21,9 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue>({
   user: null,
+  role: null,
   isAdmin: false,
+  canScan: false,
   loading: true,
   displayName: "",
   signOut: async () => {},
@@ -24,13 +31,15 @@ const AuthContext = createContext<AuthValue>({
 
 /**
  * Sits on APC's existing Firebase Auth - the same accounts people already
- * use for movie night. This app deliberately writes no user profile of its
- * own: everything it needs about a person is captured on the booking, so
- * it can never collide with APC's existing user data.
+ * use for movie night - and on the same `roles` node for who is an admin.
+ *
+ * This app deliberately writes no user profile of its own: everything it
+ * needs about a person is captured on the booking, so it can never collide
+ * with APC's existing user data. It only ever reads `roles`.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,16 +50,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return onAuthStateChanged(auth, async (next) => {
       setUser(next);
       if (!next) {
-        setIsAdmin(false);
+        setRole(null);
         setLoading(false);
         return;
       }
-      try {
-        setIsAdmin(await readIsAdmin(next.uid));
-      } catch {
-        // A denied read just means "not an admin" - never block sign-in.
-        setIsAdmin(false);
-      }
+      setRole(await readRole(next.uid));
       setLoading(false);
     });
   }, []);
@@ -58,12 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthValue>(
     () => ({
       user,
-      isAdmin,
+      role,
+      isAdmin: role === "admin",
+      canScan: role === "admin" || role === "staff",
       loading,
       displayName: user?.displayName || user?.email?.split("@")[0] || "there",
       signOut: () => firebaseSignOut(auth),
     }),
-    [user, isAdmin, loading]
+    [user, role, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

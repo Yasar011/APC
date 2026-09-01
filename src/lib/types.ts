@@ -1,3 +1,6 @@
+/** Shared with the rest of APC via the top-level `roles` node. */
+export type Role = "admin" | "staff" | null;
+
 export type BookingStatus =
   | "AWAITING_PAYMENT"
   | "PENDING_VERIFICATION"

@@ -1,0 +1,249 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "roles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      "bookingStatus": {
+        ".validate": "newData.isString() && (newData.val() === 'open' || newData.val() === 'closed')"
+      },
+      "bookingOpensAt": {
+        ".validate": "newData.isNumber() && newData.val() >= 0"
+      },
+      "pricing": {
+        "$tier": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+        }
+      },
+      "event": {
+        "posterUrl": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "$field": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        }
+      },
+      "club": {
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "tagline": {
+          ".validate": "newData.isString() && newData.val().length <= 160"
+        },
+        "points": {
+          "$i": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          }
+        }
+      },
+      "$other": {
+        ".validate": false
+      }
+    },
+    "promoCodes": {
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      "$code": {
+        ".read": true,
+        "discount": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+        },
+        "limit": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "used": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && ((auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin') || (((!data.exists() && newData.val() === 1) || (data.exists() && newData.val() === data.val() + 1)) && (!root.child('promoCodes').child($code).child('limit').exists() || newData.val() <= root.child('promoCodes').child($code).child('limit').val())))"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "movieSeats": {
+      ".read": true,
+      "$seatId": {
+        ".write": "auth != null && ( (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin') || ( (!root.child('settings').child('bookingOpensAt').exists() || now >= root.child('settings').child('bookingOpensAt').val()) && root.child('settings').child('bookingStatus').val() !== 'closed' && ( (!data.exists() && newData.child('userId').val() === auth.uid) || (data.exists() && data.child('userId').val() === auth.uid && data.child('status').val() === 'held') || (data.exists() && data.child('status').val() === 'held' && data.child('expiresAt').val() < now) ) ) )",
+        ".validate": "newData.hasChildren(['status'])",
+        "status": {
+          ".validate": "newData.isString() && ( newData.val() === 'held' || newData.val() === 'occupied' || (newData.val() === 'blocked' && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')) )"
+        },
+        "userId": {
+          ".validate": "newData.isString() && (newData.val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))"
+        },
+        "ticketId": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "expiresAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "blockedAt": {
+          ".validate": "newData.isNumber() && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')"
+        },
+        "verificationStatus": {
+          ".write": "auth != null && ((auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin') || root.child('roles').child(auth.uid).val() === 'staff')",
+          ".validate": "newData.isString() && ( newData.val() === 'pending' || ((newData.val() === 'approved' || newData.val() === 'rejected') && ((auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin') || root.child('roles').child(auth.uid).val() === 'staff')) )"
+        },
+        "checkedIn": {
+          ".write": "auth != null && ((auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin') || root.child('roles').child(auth.uid).val() === 'staff')",
+          ".validate": "newData.isBoolean() && ( newData.val() === false || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin') || root.child('roles').child(auth.uid).val() === 'staff' )"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "bookings": {
+      ".read": "auth != null && ((auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin') || root.child('roles').child(auth.uid).val() === 'staff')",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        "$ticketId": {
+          ".write": "auth != null && ((auth.uid === $uid && !data.exists()) || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".validate": "!newData.exists() || newData.hasChildren(['ticketId', 'userId', 'bookerName', 'seats', 'paidAmount', 'createdAt'])",
+          "ticketId": {
+            ".validate": "newData.isString() && newData.val() === $ticketId"
+          },
+          "userId": {
+            ".validate": "newData.isString() && (newData.val() === $uid)"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          },
+          "bookerName": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "phone": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "whatsapp": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "studentId": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "department": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "utr": {
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          },
+          "screenshotUrl": {
+            ".validate": "newData.isString() && newData.val().beginsWith('https://') && newData.val().length <= 500"
+          },
+          "paidAmount": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+          },
+          "payeeUsed": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          },
+          "promoCode": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "createdAt": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "guestNames": {
+            "$i": {
+              ".validate": "newData.isString() && newData.val().length <= 80"
+            }
+          },
+          "seats": {
+            ".validate": "newData.hasChildren()",
+            "$i": {
+              ".validate": "newData.isString() && newData.val().length <= 8"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "jawaiTrip": {
+      "settings": {
+        ".read": true,
+        ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')"
+      },
+      "finance": {
+        ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')"
+      },
+      "bookings": {
+        ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        "$bookingId": {
+          ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".validate": "newData.hasChildren(['bookerUid', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
+          "bookerUid": {
+            ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+          },
+          "seats": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= (root.child('jawaiTrip/settings/maxSeatsPerBooking').exists() ? root.child('jawaiTrip/settings/maxSeatsPerBooking').val() : 5)"
+          },
+          "status": {
+            ".validate": "newData.isString() && (((newData.val() === 'AWAITING_PAYMENT' || newData.val() === 'PENDING_VERIFICATION') && (newData.parent().child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))) || ((newData.val() === 'CONFIRMED' || newData.val() === 'REJECTED' || newData.val() === 'CANCELLED') && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')))"
+          },
+          "verifiedBy": {
+            ".validate": "!newData.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')"
+          },
+          "$other": {
+            ".validate": true
+          }
+        }
+      },
+      "bookingsByUser": {
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".write": "auth != null && (auth.uid === $uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))"
+        }
+      },
+      "bookingCodeIndex": {
+        ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+        "$bookingCode": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".validate": "newData.isString()"
+        }
+      },
+      "tickets": {
+        ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+        ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        "$ticketCode": {
+          ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff'))",
+          "boarded": {
+            ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+            ".validate": "newData.isBoolean()"
+          },
+          "boardedAt": {
+            ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+            ".validate": "newData.isNumber()"
+          },
+          "boardedBy": {
+            ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+            ".validate": "newData.isString()"
+          }
+        }
+      },
+      "ticketsByBooking": {
+        ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        "$bookingId": {
+          ".read": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff'))"
+        }
+      },
+      "promoCodes": {
+        ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        "$code": {
+          ".read": "auth != null"
+        }
+      }
+    }
+  }
+}

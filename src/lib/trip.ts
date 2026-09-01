@@ -10,8 +10,8 @@ import {
 } from "firebase/database";
 import { db, tripPath } from "./firebase";
 import { newTicketCode } from "./codes";
-import { DEFAULT_FINANCE, DEFAULT_SETTINGS } from "./constants";
-import { Booking, PromoCode, Ticket, TripFinance, TripSettings } from "./types";
+import { DEFAULT_FINANCE, DEFAULT_SETTINGS, FOUNDER_ADMIN_UID } from "./constants";
+import { Booking, PromoCode, Role, Ticket, TripFinance, TripSettings } from "./types";
 
 /**
  * Every read and write this app performs, in one place.
@@ -68,11 +68,27 @@ export async function saveFinance(finance: Partial<TripFinance>) {
   await update(ref(db, tripPath("finance")), { ...finance, updatedAt: Date.now() });
 }
 
-// ------------------------------------------------------------------ admins
+// ------------------------------------------------------------------- roles
 
-export async function readIsAdmin(uid: string): Promise<boolean> {
-  const snap = await get(ref(db, tripPath("admins", uid)));
-  return snap.val() === true;
+/**
+ * Roles come from APC's existing `roles` node - the same one movie night
+ * uses - rather than a second list this app would own. Whoever is already
+ * an admin there is an admin here, with nothing to set up.
+ *
+ * Note this reads `roles`, NOT `jawaiTrip/roles`: it is shared, org-wide
+ * data that this app only ever reads.
+ */
+export async function readRole(uid: string): Promise<Role> {
+  if (uid === FOUNDER_ADMIN_UID) return "admin";
+  try {
+    const snap = await get(ref(db, `roles/${uid}`));
+    const value = snap.val();
+    return value === "admin" || value === "staff" ? value : null;
+  } catch {
+    // The rules let someone read only their own role; a denial here just
+    // means "no role", and must never block sign-in.
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------- bookings

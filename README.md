@@ -55,29 +55,42 @@ defaults.
 1. Open **Firebase Console → Realtime Database → Rules**.
 2. Open `database.rules.snippet.json` from this repo.
 3. Copy the `"jawaiTrip": { ... }` block and paste it **inside your existing top-level
-   `"rules"` object**, as a sibling of the keys already there. Don't delete anything.
+   `"rules"` object**, as a sibling of `roles`, `settings`, `promoCodes`, `movieSeats` and
+   `bookings`. Don't delete anything.
 4. Drop the `___README___` key — it's documentation, not a rule.
 5. **Publish**, then open the movie night app and confirm it still works.
 
-### 3. Make yourself an admin
+`database.rules.MERGED-EXAMPLE.json` is the whole file already merged, as a reference for
+what the result should look like. `jawaiTrip` is the only key added; nothing else differs.
 
-Nobody can grant themselves admin — the rules forbid it — so the first one is added by hand.
+Note the nesting: `jawaiTrip/settings`, `jawaiTrip/bookings` and `jawaiTrip/promoCodes` are
+separate from the top-level `settings`, `bookings` and `promoCodes` that movie night uses.
+Same names, different places, no collision.
 
-1. Sign in to this app at `/login`.
-2. Go to `/admin`. It will refuse you, and show your UID on screen.
-3. In **Firebase Console → Realtime Database → Data**, create
-   `jawaiTrip / admins / <that UID>` with the boolean value `true`.
-4. Reload `/admin`.
+### 3. Admins — nothing to do
 
-From there you can add other admins the same way.
+This app reuses APC's **existing top-level `roles` node**, the same one movie night uses,
+rather than keeping a second list. Whoever is already `roles/<uid>` = `"admin"` (or the
+founding uid hardcoded in the rules) is a trip admin the moment the rules go live.
+
+`roles/<uid>` = `"staff"` gets the **bus scanner and nothing else** — the same job staff
+already do checking people in on movie night. Staff never see payments, the roster, or the
+margin.
+
+To add someone, set their role in **Firebase Console → Realtime Database → Data → `roles`**,
+exactly as you would for movie night. `/admin` prints the signed-in account's uid if you
+need it.
+
+> The founding uid is mirrored in `src/lib/constants.ts` as `FOUNDER_ADMIN_UID` so the UI
+> agrees with the rules. If it ever changes in the rules, change it there too.
 
 ### 4. Storage (payment screenshots)
 
 Screenshots go to Firebase Storage in the same project. Paste the block from
 `storage.rules.snippet` into **Firebase Console → Storage → Rules** — same warning as
 above, merge it rather than replacing what's there. Add your admin UIDs to the
-`isJawaiAdmin()` list in that file: Storage rules can't read the database, so admins are
-listed in both places.
+`isJawaiAdmin()` list in that file: Storage rules cannot read the Realtime Database, so
+unlike everything else admins have to be listed there by hand.
 
 If the project is on the free Spark plan and Storage won't provision a bucket without
 billing, switch `src/lib/storage.ts` to a Cloudinary unsigned upload — it's the only file
@@ -175,7 +188,6 @@ Everything under `jawaiTrip`:
 |---|---|
 | `settings` | Price, dates, seats, UPI details, trip lead contact. World-readable. |
 | `finance` | What a seat costs the club. **Admin-only** — never world-readable. |
-| `admins/$uid` | `true` for trip admins. |
 | `bookings/$id` | Booker, travellers, pricing breakdown, payment proof, status. |
 | `bookingsByUser/$uid/$id` | "Does this person already have a booking?" |
 | `bookingCodeIndex/$code` | Booking QR → booking id. |

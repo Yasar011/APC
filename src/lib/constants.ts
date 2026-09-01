@@ -1,5 +1,13 @@
 import { BookingStatus } from "./types";
 
+/**
+ * APC's founding admin, mirrored from the database rules, which grant this
+ * uid admin regardless of what `roles` says. Kept in sync by hand - if it
+ * changes in the rules it has to change here too, or the UI and the rules
+ * will disagree about who is an admin.
+ */
+export const FOUNDER_ADMIN_UID = "kGmSLYoXlUgrdAfKogkfzmPWrrL2";
+
 export const BLOOD_GROUPS = [
   "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Don't know",
 ];

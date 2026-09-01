@@ -15,32 +15,54 @@ const NAV = [
   { href: "/admin/promos", label: "Promo codes", icon: Tag },
 ];
 
+const SCANNER_PATH = "/admin/scan";
+
 /**
- * Admin is whoever is listed under jawaiTrip/admins in the database. This
- * gate is a convenience — the database rules enforce the same thing, so
+ * Roles come from APC's shared `roles` node, so whoever already runs movie
+ * night runs this too, with nothing to set up.
+ *
+ * Admins get everything. Staff get the bus scanner only — the same job they
+ * already do checking people in on movie night — and never see payments,
+ * the roster or the margin.
+ *
+ * This gate is a convenience: the database rules enforce the same split, so
  * hiding the UI is not what keeps anyone out.
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, canScan, role, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Staff belong on the scanner and nowhere else in here.
+  const staffOnly = !isAdmin && canScan;
+  const onScanner = pathname === SCANNER_PATH;
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login?next=/admin");
   }, [loading, user, router]);
 
+  useEffect(() => {
+    if (!loading && staffOnly && !onScanner) router.replace(SCANNER_PATH);
+  }, [loading, staffOnly, onScanner, router]);
+
   if (loading || !user) return <FullPageSpinner />;
 
-  if (!isAdmin) {
+  if (staffOnly && !onScanner) return <FullPageSpinner />;
+
+  if (!isAdmin && !canScan) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-6">
         <Card className="max-w-md">
           <CardBody className="text-center">
             <p className="text-sm font-medium text-neutral-900">This area is for trip admins</p>
             <p className="mt-2 text-sm text-neutral-500">
-              Signed in as {user.email}. To grant admin access, add this account&apos;s UID
-              under <code className="rounded bg-neutral-100 px-1">jawaiTrip/admins</code> in
-              the Firebase console:
+              Signed in as {user.email}
+              {role ? ` (role: ${role})` : ""}. Access uses APC&apos;s shared roles, the same
+              as movie night — set{" "}
+              <code className="rounded bg-neutral-100 px-1">roles/&lt;uid&gt;</code> to{" "}
+              <code className="rounded bg-neutral-100 px-1">&quot;admin&quot;</code> (or{" "}
+              <code className="rounded bg-neutral-100 px-1">&quot;staff&quot;</code> for bus
+              check-in only) in the Firebase console. This account&apos;s uid:
             </p>
             <code className="mt-3 block break-all rounded-lg bg-neutral-100 px-3 py-2 text-xs text-neutral-700">
               {user.uid}
@@ -78,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">
-          {NAV.map((item) => {
+          {(isAdmin ? NAV : NAV.filter((item) => item.href === SCANNER_PATH)).map((item) => {
             const Icon = item.icon;
             const active =
               item.href === "/admin"
