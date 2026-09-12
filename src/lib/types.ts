@@ -48,6 +48,8 @@ export interface TripSettings {
   /** @deprecated See upiId. */
   paymentQrUrl?: string | null;
   contactName: string;
+  /** e.g. "APC President" - shown next to the name. */
+  contactRole: string;
   contactPhone: string;
   pickupPoint: string;
   departureTime: string;

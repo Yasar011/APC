@@ -2,8 +2,14 @@
 
 Booking site for the APC Club's adventure trip to Jawai, NIFT Jodhpur.
 
-A one-day trip: the bus leaves campus in the morning, and everyone is back the same night.
-Bus, food and the safari are all in the price.
+A one-day trip, **Jodhpur → Jadan Om Temple → Jawai → Jodhpur**. Out at 8:00 AM, back by
+12:30 AM. AC bus, lunch, dinner, the temple visit, Jawai Dam, the jeep safari and music are
+all in the price.
+
+> **Contacts.** The tour operator's itinerary carries their own phone number and Instagram
+> handles. None of them appear on this site, deliberately — students booking through APC
+> reach APC. The only contact is the club's, set in Trip settings and defaulting to
+> Yasar CH, APC President.
 
 **One seat per NIFT ID.** A student fills in their details, blood group, medical conditions
 and emergency contact, pays by UPI, and gets a QR ticket once an admin verifies the payment.

@@ -594,7 +594,17 @@ function SettingsModal({
             onChange={(e) => set("contactName", e.target.value)}
           />
         </Field>
-        <Field label="Trip lead phone">
+        <Field label="Trip lead role" hint="Shown next to the name.">
+          <Input
+            value={form.contactRole ?? ""}
+            onChange={(e) => set("contactRole", e.target.value)}
+            placeholder="APC President"
+          />
+        </Field>
+        <Field
+          label="Trip lead WhatsApp"
+          hint="Students message this number, with the question pre-typed."
+        >
           <Input
             value={form.contactPhone}
             onChange={(e) => set("contactPhone", e.target.value)}

@@ -42,8 +42,8 @@ export const DEFAULT_FINANCE = {
 /** Used only until an admin saves real settings to the database. */
 export const DEFAULT_SETTINGS = {
   tripName: "Jawai Safari",
-  tagline: "Leopard country, granite hills, and a day off campus.",
-  destination: "Jawai Bandh, Pali, Rajasthan",
+  tagline: "The wild side of Rajasthan. One day, endless experiences.",
+  destination: "Jodhpur to Jadan Om Temple to Jawai",
   startDate: "",
   endDate: "",
   pricePerPerson: 2099,
@@ -51,9 +51,10 @@ export const DEFAULT_SETTINGS = {
   seatsBooked: 0,
   bookingsOpen: true,
   upiAccounts: [] as UpiAccount[],
-  contactName: "",
-  contactPhone: "",
-  pickupPoint: "NIFT Jodhpur main gate",
-  departureTime: "",
+  contactName: "Yasar CH",
+  contactRole: "APC President",
+  contactPhone: "8157980825",
+  pickupPoint: "Jodhpur",
+  departureTime: "8:00 AM",
   updatedAt: 0,
 };
