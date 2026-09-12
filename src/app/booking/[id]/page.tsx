@@ -141,6 +141,10 @@ export default function BookingPage() {
   }
 
   const confirmed = booking.status === "CONFIRMED";
+  const missingToSubmit = [
+    !paymentRef.trim() && "the UPI reference number",
+    !file && "your payment screenshot",
+  ].filter(Boolean) as string[];
 
   return (
     <Shell onSignOut={signOut}>
@@ -233,7 +237,11 @@ export default function BookingPage() {
               }}
             />
 
-            <Field label="UPI reference number" required>
+            <Field
+              label="UPI reference number"
+              required
+              hint="The transaction or UTR number your payment app shows after paying."
+            >
               <Input
                 value={paymentRef}
                 onChange={(event) => setPaymentRef(event.target.value)}
@@ -280,10 +288,23 @@ export default function BookingPage() {
               className="w-full"
               onClick={resubmitPayment}
               loading={saving}
-              disabled={!file || !paymentRef.trim()}
+              disabled={missingToSubmit.length > 0}
             >
               Send for approval
             </Button>
+
+            {/* A greyed-out button with no reason is just a dead end. Say
+                what is still missing. */}
+            {missingToSubmit.length > 0 ? (
+              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-amber-700">
+                <CircleAlert className="h-3.5 w-3.5 shrink-0" />
+                Add {missingToSubmit.join(" and ")} to send this.
+              </p>
+            ) : (
+              <p className="text-center text-xs text-neutral-500">
+                Your seat is held once an admin confirms the payment.
+              </p>
+            )}
           </CardBody>
         </Card>
       )}
