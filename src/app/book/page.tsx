@@ -37,7 +37,7 @@ import {
   readSettings,
   setBookingPayee,
 } from "@/lib/trip";
-import { pickUpiForUser } from "@/lib/upi";
+import { activeUpiAccounts, pickUpiForUser } from "@/lib/upi";
 import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { DEFAULT_SETTINGS } from "@/lib/constants";
 import { PromoCode, Traveller, TripSettings, UpiAccount } from "@/lib/types";
@@ -162,12 +162,18 @@ export default function BookPage() {
   /** Creates the booking up front so a paid-but-unsubmitted one still exists. */
   async function startPayment() {
     if (!user) return;
+
+    // Refuse rather than create a booking nobody can be told where to pay.
+    // A booking with no payee recorded is money that cannot be traced back.
+    const account = pickUpiForUser(settings, user.uid);
+    if (!account) {
+      toast.error("Payments aren't set up yet — message the trip leads before booking.");
+      return;
+    }
+
     setSaving(true);
     try {
       const now = Date.now();
-      // Spread students across the club's collection accounts, and record
-      // which one this booking was sent to.
-      const account = pickUpiForUser(settings, user.uid);
       const code = newBookingCode();
       const id = await createBooking({
         bookerUid: user.uid,
@@ -270,6 +276,7 @@ export default function BookPage() {
   }
 
   const seatsLeft = Math.max(0, settings.totalSeats - settings.seatsBooked);
+  const noPaymentAccount = activeUpiAccounts(settings).length === 0;
   const missingToSubmit = [
     !paymentRef.trim() && "the UPI reference number",
     !file && "your payment screenshot",
@@ -372,12 +379,26 @@ export default function BookPage() {
             </CardBody>
           </Card>
 
+          {noPaymentAccount && (
+            <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+              <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              Payments aren&apos;t set up yet, so there&apos;s nowhere to send the money.
+              Message the trip leads
+              {settings.contactPhone ? ` on ${settings.contactPhone}` : ""} before booking.
+            </p>
+          )}
+
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
             <Button variant="ghost" onClick={() => setStep("details")}>
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            <Button size="lg" onClick={startPayment} loading={saving}>
+            <Button
+              size="lg"
+              onClick={startPayment}
+              loading={saving}
+              disabled={noPaymentAccount}
+            >
               Continue to payment
               <ArrowRight className="h-4 w-4" />
             </Button>

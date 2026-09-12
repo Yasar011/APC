@@ -77,12 +77,22 @@ export default function BookingPage() {
       }
       setBooking(found);
       setPaymentRef(found.paymentRef || "");
-      // Whichever account this booking was sent to. If it predates the
-      // several-accounts change, fall back to the one they'd get today.
-      setPayee(
-        findUpiAccount(tripSettings, found.payeeUpiId) ??
-          pickUpiForUser(tripSettings, found.bookerUid)
-      );
+      // Whichever account this booking was sent to. A booking made before
+      // any UPI account existed has none recorded, so fall back to the one
+      // they would be given today - and WRITE IT BACK. Showing an ID we
+      // never recorded is how a payment ends up untraceable: the student
+      // pays what the page told them to, and the admin sees "not recorded".
+      const recorded = findUpiAccount(tripSettings, found.payeeUpiId);
+      const resolved = recorded ?? pickUpiForUser(tripSettings, found.bookerUid);
+      setPayee(resolved);
+
+      if (!recorded && resolved) {
+        try {
+          await setBookingPayee(found.id, resolved.upiId, resolved.payeeName);
+        } catch {
+          // Not fatal - the panel still shows the right ID to pay.
+        }
+      }
 
       if (found.status === "CONFIRMED") {
         setTickets(await readTicketsForBooking(found.id));
