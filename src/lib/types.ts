@@ -116,6 +116,27 @@ export interface PricingBreakdown {
   total: number;
 }
 
+/**
+ * One transfer against a booking.
+ *
+ * A list rather than a single field because the first payment to a new UPI
+ * ID is capped by the bank (commonly 2,000 in the first 24 hours), so a
+ * 2,099 seat often cannot be paid in one go. See src/lib/payments.ts.
+ */
+export interface PaymentProof {
+  /** Unique within the booking; also the key the image is stored under. */
+  id: string;
+  /** Cloudinary URL, or STORED_IN_DB when it's in the database. */
+  url: string;
+  /** What this transfer was for, in rupees. */
+  amount: number;
+  /** UTR / transaction reference the student's app showed. */
+  reference: string;
+  /** Which of the club's UPI IDs it went to. */
+  upiId: string | null;
+  at: number;
+}
+
 export interface Booking {
   id: string;
   bookerUid: string;
@@ -128,7 +149,12 @@ export interface Booking {
   /** Exactly one entry — the person travelling, who is also the booker. */
   travellers: Traveller[];
   pricing: PricingBreakdown;
+  /** Every transfer made against this booking. */
+  payments?: Record<string, PaymentProof> | PaymentProof[];
+  /** @deprecated The most recent payment's screenshot, kept in step with
+   *  `payments` so bookings made before it was a list still render. */
   paymentScreenshotUrl: string | null;
+  /** @deprecated See paymentScreenshotUrl. */
   paymentRef: string;
   /** Which of the club's UPI IDs this student was told to pay into. */
   payeeUpiId: string | null;

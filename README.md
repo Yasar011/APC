@@ -262,6 +262,55 @@ ticket issued exactly as before; the email just doesn't go out, and the admin se
 message on **WhatsApp** from the booking page — one tap, already written, to the number on
 the booking. That button is there either way.
 
+### Paying in more than one go
+
+**The first payment to a UPI ID you have never paid is capped by the bank** — commonly
+₹2,000 for the first 24 hours. A ₹2,099 seat therefore often *cannot* be paid in one
+transfer, and before this that was a dead end: one screenshot field, one amount, and a
+student staring at a payment their app refused to make.
+
+So a booking carries a **list of payments**. Pay what goes through, upload it, and the page
+comes back asking for the balance with **the QR regenerated for the remaining amount** — so
+the second transfer is exact and nobody does mental arithmetic at a payment screen. The
+warning appears *before* they try, not after their bank refuses.
+
+The admin's page shows **every transfer with its own screenshot**, the running total against
+what is owed, and a red **"₹99 short"** banner when it doesn't add up. Confirming while short
+is still possible — sometimes the club decides to eat it — but the button says so rather than
+looking like a normal confirm. Overpayment is flagged too, as a refund to make.
+
+The amount is typed by the student, so it is a **claim, not a fact** — it exists to make the
+screenshot quick to check, and the admin check is still the control.
+
+`Still owed` is a column in both the CSV and the Google Sheet, which makes "who hasn't
+finished paying" a sort rather than a hunt.
+
+> Bookings made before this read as a single full-amount transfer, so nothing already
+> confirmed suddenly looks unpaid.
+
+### Opening a UPI app directly
+
+Under the QR, on a phone, there are buttons for **Google Pay, PhonePe, Paytm** and any UPI
+app. Each opens that app with the amount and booking code already filled in.
+
+These are Android URL schemes (`tez://`, `phonepe://`, `paytmmp://`). **iOS mostly ignores
+them**, which is why the QR is always on screen and never hidden behind a button, and why
+there's a "Nothing opened? Scan the QR instead" line under them.
+
+### Email verification
+
+Signing up sends a Firebase verification email, and an amber banner nags until the link is
+clicked. The ticket is emailed, so an address nobody has proved is reachable is a seat that
+quietly never gets its confirmation.
+
+**Every message about email says to check Spam and Promotions.** That is not boilerplate:
+automated mail to a student address lands there often enough that "I never got it" nearly
+always means "I didn't look there". It's on the banner, on the re-send toast, and on the
+"still not verified" message.
+
+The banner is a nudge, not a gate — an unverified student can still book, because a bounced
+verification email is a worse reason to lose a seat than it is to chase an address.
+
 ### WhatsApp group
 
 Paste the group invite link into **Trip settings → Trip WhatsApp group**. It then appears:
@@ -271,6 +320,18 @@ Paste the group invite link into **Trip settings → Trip WhatsApp group**. It t
 - in the WhatsApp message the admin sends
 
 so the group is people who have actually paid.
+
+#### "Can a link work for only one person?"
+
+**No.** WhatsApp has no per-person invite — every `chat.whatsapp.com` link works for anyone
+holding it, and a student who forwards theirs has let that person in. Nothing on our side
+can change that, and any claim otherwise would be a lie told by a button.
+
+What does work is WhatsApp's own **Group settings → Approve new participants**. Turn it on
+once and every join waits for an admin, showing the number asking. That turns it into "is
+this number on the list?", which **`/admin/join`** answers instantly — matched against
+**confirmed bookings only**, on the last 10 digits, so someone who never paid is never let
+in. It shows the name, NIFT ID and booking code for a match.
 
 > The link is stored in `jawaiTrip/settings`, which is world-readable — the public page needs
 > the price and dates from the same node. The app only *shows* it to confirmed students, but
@@ -368,6 +429,7 @@ an admin, never an `orderByChild` query.
 | `/admin/promos` | Admins | Promo codes |
 | `/admin/roster` | Admins | Printable manifest |
 | `/admin/scan` | Admins | Bus check-in |
+| `/admin/join` | Admins | Check a number before letting it into the group |
 | `/api/email/confirmation` | Admins & the booker | Sheet row + confirmation email |
 | `/api/sheets/sync` | Admins | Pushes every booking into the sheet |
 

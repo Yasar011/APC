@@ -11,7 +11,15 @@ import {
 import { db, tripPath } from "./firebase";
 import { newTicketCode, niftIdKey } from "./codes";
 import { DEFAULT_FINANCE, DEFAULT_SETTINGS, FOUNDER_ADMIN_UID } from "./constants";
-import { Booking, PromoCode, Role, Ticket, TripFinance, TripSettings } from "./types";
+import {
+  Booking,
+  PaymentProof,
+  PromoCode,
+  Role,
+  Ticket,
+  TripFinance,
+  TripSettings,
+} from "./types";
 
 /**
  * Every read and write this app performs, in one place.
@@ -179,15 +187,20 @@ export async function setBookingPayee(
   });
 }
 
-/** Student attaches proof of payment and hands the booking to an admin. */
-export async function attachPayment(
-  bookingId: string,
-  paymentScreenshotUrl: string,
-  paymentRef: string
-) {
+/**
+ * Records one transfer against a booking and hands it to an admin.
+ *
+ * Appends rather than replaces: the first payment to a new UPI ID is
+ * capped by the bank, so a seat is often paid in two goes and both
+ * screenshots have to survive. The legacy single-screenshot fields are
+ * kept pointing at the most recent transfer, so anything still reading
+ * them shows the newest proof rather than nothing.
+ */
+export async function addPayment(bookingId: string, payment: PaymentProof) {
   await update(ref(db, tripPath("bookings", bookingId)), {
-    paymentScreenshotUrl,
-    paymentRef,
+    [`payments/${payment.id}`]: payment,
+    paymentScreenshotUrl: payment.url,
+    paymentRef: payment.reference,
     status: "PENDING_VERIFICATION",
     rejectionReason: null,
     updatedAt: Date.now(),

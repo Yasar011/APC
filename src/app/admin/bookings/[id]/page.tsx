@@ -40,6 +40,7 @@ import {
 } from "@/lib/trip";
 import { profit, quote } from "@/lib/pricing";
 import { readScreenshot } from "@/lib/storage";
+import { paymentState, withLegacyPayment } from "@/lib/payments";
 import {
   BOOKING_STATUS_COLORS,
   BOOKING_STATUS_LABELS,
@@ -94,7 +95,7 @@ export default function AdminBookingDetailPage() {
   );
   const [emailing, setEmailing] = useState(false);
   const [recomputed, setRecomputed] = useState<PricingBreakdown | null>(null);
-  const [shot, setShot] = useState<string | null>(null);
+  const [shots, setShots] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -115,15 +116,30 @@ export default function AdminBookingDetailPage() {
         setLoadError("That booking doesn't exist.");
         return;
       }
-      setBooking(found);
+      // Bookings made before payments were a list carry one screenshot and
+      // no amount; treat that as a single full-amount transfer so the
+      // totals don't read as unpaid.
+      const normalised = withLegacyPayment(found);
+      setBooking(normalised);
 
       const promo = found.pricing.promoCode
         ? await readPromo(found.pricing.promoCode)
         : null;
       setRecomputed(quote(tripSettings, promo));
-      // The screenshot lives outside the booking so the admin list stays
-      // light; fetch it only now that one booking is open.
-      setShot(await readScreenshot(found));
+      // Screenshots live outside the booking so the admin list stays light;
+      // fetch them only now that one booking is open.
+      const transfers = paymentState(normalised).transfers;
+      const loaded = await Promise.all(
+        transfers.map(async (item) => [
+          item.id,
+          await readScreenshot(normalised, item.id).catch(() => null),
+        ])
+      );
+      setShots(
+        Object.fromEntries(
+          loaded.filter((entry): entry is [string, string] => Boolean(entry[1]))
+        )
+      );
       setLoadError(null);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not load this booking.");
@@ -213,6 +229,7 @@ export default function AdminBookingDetailPage() {
   const canDecide =
     booking.status === "PENDING_VERIFICATION" || booking.status === "AWAITING_PAYMENT";
   const whatsappHrefForBooking = whatsappConfirmationHref(booking, settings);
+  const money = paymentState(booking);
 
   return (
     <div className="space-y-6">
@@ -243,33 +260,108 @@ export default function AdminBookingDetailPage() {
         {/* ------------------------------------------------ payment proof */}
         <Card>
           <CardBody>
-            <h2 className="text-sm font-semibold text-neutral-900">Payment proof</h2>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold text-neutral-900">
+                Payment proof
+              </h2>
+              <span className="text-xs text-neutral-500">
+                {money.transfers.length === 1
+                  ? "1 transfer"
+                  : `${money.transfers.length} transfers`}
+              </span>
+            </div>
 
-            {shot ? (
-              <>
-                <a
-                  href={shot}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 block overflow-hidden rounded-lg border border-neutral-200"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={shot}
-                    alt="Payment screenshot"
-                    className="max-h-[460px] w-full bg-neutral-50 object-contain"
-                  />
-                </a>
-                <a
-                  href={shot}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700 hover:underline"
-                >
-                  Open full size
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </>
+            {/* A seat is often paid in two goes - the first payment to a new
+                UPI ID is capped by the bank - so each transfer gets its own
+                screenshot, and the running total is what matters. */}
+            {money.transfers.length > 0 && (
+              <div
+                className={`mt-3 rounded-lg border p-3 ${
+                  money.settled
+                    ? "border-emerald-200 bg-emerald-50"
+                    : "border-red-200 bg-red-50"
+                }`}
+              >
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className={money.settled ? "text-emerald-900" : "text-red-900"}>
+                    Paid {rupees(money.paid)} of {rupees(money.due)}
+                  </span>
+                  <span
+                    className={`font-semibold ${
+                      money.settled ? "text-emerald-800" : "text-red-800"
+                    }`}
+                  >
+                    {money.settled
+                      ? money.overpaid > 0
+                        ? `${rupees(money.overpaid)} over`
+                        : "Fully paid"
+                      : `${rupees(money.outstanding)} short`}
+                  </span>
+                </div>
+                {!money.settled && (
+                  <p className="mt-1 text-xs text-red-800">
+                    Don&apos;t confirm until the rest arrives, or the club is
+                    covering the difference.
+                  </p>
+                )}
+                {money.overpaid > 0 && (
+                  <p className="mt-1 text-xs text-emerald-900">
+                    They sent more than the total — owed {rupees(money.overpaid)} back.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {money.transfers.length > 0 ? (
+              <div className="mt-4 space-y-5">
+                {money.transfers.map((item, index) => (
+                  <div key={item.id}>
+                    <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-xs">
+                      <span className="font-semibold text-neutral-900">
+                        {index + 1}. {rupees(item.amount)}
+                      </span>
+                      <span className="font-mono text-neutral-500">
+                        {item.reference || "no reference"}
+                      </span>
+                    </div>
+                    {item.upiId && (
+                      <p className="mb-2 font-mono text-xs text-neutral-500">
+                        to {item.upiId}
+                      </p>
+                    )}
+                    {shots[item.id] ? (
+                      <>
+                        <a
+                          href={shots[item.id]}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block overflow-hidden rounded-lg border border-neutral-200"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={shots[item.id]}
+                            alt={`Payment screenshot ${index + 1}`}
+                            className="max-h-[420px] w-full bg-neutral-50 object-contain"
+                          />
+                        </a>
+                        <a
+                          href={shots[item.id]}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700 hover:underline"
+                        >
+                          Open full size
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </>
+                    ) : (
+                      <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+                        The screenshot for this transfer couldn&apos;t be loaded.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-500">
                 No screenshot uploaded yet.
@@ -371,11 +463,20 @@ export default function AdminBookingDetailPage() {
                   size="lg"
                   onClick={approve}
                   loading={busy}
-                  disabled={!booking.paymentScreenshotUrl}
+                  disabled={money.transfers.length === 0}
                 >
                   <Check className="h-4 w-4" />
-                  Confirm and issue the ticket
+                  {money.settled
+                    ? "Confirm and issue the ticket"
+                    : `Confirm anyway — ${rupees(money.outstanding)} short`}
                 </Button>
+                {money.transfers.length > 0 && !money.settled && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+                    Only {rupees(money.paid)} of {rupees(money.due)} has arrived.
+                    Confirming now issues the ticket and counts the seat as
+                    sold at what they paid.
+                  </p>
+                )}
                 <Button
                   variant="outline"
                   className="w-full"
@@ -385,7 +486,7 @@ export default function AdminBookingDetailPage() {
                   <X className="h-4 w-4" />
                   Reject payment
                 </Button>
-                {!booking.paymentScreenshotUrl && (
+                {money.transfers.length === 0 && (
                   <p className="text-center text-xs text-neutral-500">
                     Nothing to verify yet — the student hasn&apos;t uploaded a screenshot.
                   </p>

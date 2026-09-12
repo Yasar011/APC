@@ -1,6 +1,7 @@
 import { get, ref, set } from "firebase/database";
 import { db, tripPath } from "./firebase";
 import { isCloudinaryConfigured, uploadToCloudinary } from "./cloudinary";
+import { paymentList } from "./payments";
 import { Booking } from "./types";
 
 /**
@@ -103,10 +104,15 @@ function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<
   ]);
 }
 
+/**
+ * A booking can have several screenshots now - one per transfer - so each
+ * is stored under its own payment id rather than overwriting the last.
+ */
 export async function uploadScreenshot(
   _uid: string,
   bookingId: string,
-  file: File
+  file: File,
+  paymentId?: string
 ): Promise<string> {
   const error = validateScreenshot(file);
   if (error) throw new Error(error);
@@ -116,7 +122,10 @@ export async function uploadScreenshot(
   if (isCloudinaryConfigured) {
     const blob = await toBlob(canvas, 0.8);
     return withTimeout(
-      uploadToCloudinary(blob, `${bookingId}.jpg`),
+      uploadToCloudinary(
+        blob,
+        paymentId ? `${bookingId}-${paymentId}.jpg` : `${bookingId}.jpg`
+      ),
       45_000,
       "The upload timed out. Check your connection and try again."
     );
@@ -135,8 +144,15 @@ export async function uploadScreenshot(
     );
   }
 
+  // Nested under the payment id so a second transfer does not overwrite
+  // the first one's proof. The rules accept both shapes, so bookings made
+  // before this - a bare string at paymentShots/<bookingId> - still read.
+  const path = paymentId
+    ? tripPath("paymentShots", bookingId, paymentId)
+    : tripPath("paymentShots", bookingId);
+
   await withTimeout(
-    set(ref(db, tripPath("paymentShots", bookingId)), encoded),
+    set(ref(db, path), encoded),
     30_000,
     "Sending the screenshot timed out. Check your connection and try again."
   );
@@ -148,12 +164,32 @@ export async function uploadScreenshot(
  * What to put in an <img src>. Cloudinary URLs are used directly; the
  * database fallback is fetched on demand, only when a booking is opened.
  */
-export async function readScreenshot(booking: Booking): Promise<string | null> {
-  if (!booking.paymentScreenshotUrl) return null;
-  if (booking.paymentScreenshotUrl.startsWith("http")) {
-    return booking.paymentScreenshotUrl;
-  }
+export async function readScreenshot(
+  booking: Booking,
+  paymentId?: string
+): Promise<string | null> {
+  const url = paymentId
+    ? paymentList(booking).find((item) => item.id === paymentId)?.url
+    : booking.paymentScreenshotUrl;
 
-  const snap = await get(ref(db, tripPath("paymentShots", booking.id)));
-  return snap.exists() ? (snap.val() as string) : null;
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+
+  const snap = await get(
+    ref(
+      db,
+      paymentId
+        ? tripPath("paymentShots", booking.id, paymentId)
+        : tripPath("paymentShots", booking.id)
+    )
+  );
+  if (snap.exists()) return snap.val() as string;
+
+  // A booking made before screenshots were nested keeps its image at the
+  // flat path, even though its payment now has an id.
+  if (paymentId) {
+    const flat = await get(ref(db, tripPath("paymentShots", booking.id)));
+    if (flat.exists()) return flat.val() as string;
+  }
+  return null;
 }

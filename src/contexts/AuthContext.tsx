@@ -14,6 +14,10 @@ interface AuthValue {
   isAdmin: boolean;
   /** Admins, plus staff — enough to scan people onto the bus. */
   canScan: boolean;
+  /** Whether they have clicked the link in the verification email. */
+  emailVerified: boolean;
+  /** Re-checks with Firebase, for after they've clicked the link. */
+  refreshUser: () => Promise<void>;
   loading: boolean;
   displayName: string;
   signOut: () => Promise<void>;
@@ -24,6 +28,8 @@ const AuthContext = createContext<AuthValue>({
   role: null,
   isAdmin: false,
   canScan: false,
+  emailVerified: false,
+  refreshUser: async () => {},
   loading: true,
   displayName: "",
   signOut: async () => {},
@@ -40,6 +46,9 @@ const AuthContext = createContext<AuthValue>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<Role>(null);
+  // Mirrored into state because `user.emailVerified` is a field on a stable
+  // object: clicking the link changes it without React ever re-rendering.
+  const [emailVerified, setEmailVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     return onAuthStateChanged(auth, async (next) => {
       setUser(next);
+      setEmailVerified(next?.emailVerified ?? false);
       if (!next) {
         setRole(null);
         setLoading(false);
@@ -65,11 +75,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       isAdmin: role === "admin",
       canScan: role === "admin" || role === "staff",
+      emailVerified,
+      refreshUser: async () => {
+        if (!auth.currentUser) return;
+        await auth.currentUser.reload();
+        setUser(auth.currentUser);
+        setEmailVerified(auth.currentUser.emailVerified);
+      },
       loading,
       displayName: user?.displayName || user?.email?.split("@")[0] || "there",
       signOut: () => firebaseSignOut(auth),
     }),
-    [user, role, loading]
+    [user, role, emailVerified, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

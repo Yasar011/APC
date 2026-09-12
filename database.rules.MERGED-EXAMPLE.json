@@ -228,7 +228,10 @@
         "$bookingId": {
           ".read": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
           ".write": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
-          ".validate": "newData.isString() && newData.val().length <= 900000"
+          ".validate": "!newData.isString() || newData.val().length <= 900000",
+          "$paymentId": {
+            ".validate": "newData.isString() && newData.val().length <= 900000"
+          }
         }
       },
       "tickets": {

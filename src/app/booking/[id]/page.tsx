@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -11,32 +11,28 @@ import {
   MessageCircle,
   Mountain,
   Printer,
-  Upload,
   XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { PriceBreakdown } from "@/components/trip/PriceBreakdown";
-import { UpiPayPanel } from "@/components/trip/UpiPayPanel";
+import { PaymentForm } from "@/components/trip/PaymentForm";
+import { withLegacyPayment } from "@/lib/payments";
+import { VerifyEmailNotice } from "@/components/trip/VerifyEmailNotice";
 import { TicketCard } from "@/components/trip/TicketCard";
 import {
   Badge,
   Button,
   Card,
   CardBody,
-  Field,
   FullPageSpinner,
-  Input,
 } from "@/components/ui/primitives";
 import {
-  attachPayment,
   readBooking,
   readSettings,
   readTicketsForBooking,
   setBookingPayee,
 } from "@/lib/trip";
 import { findUpiAccount, pickUpiForUser } from "@/lib/upi";
-import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, DEFAULT_SETTINGS } from "@/lib/constants";
 import { Booking, Ticket, TripSettings, UpiAccount } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
@@ -54,10 +50,6 @@ export default function BookingPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [payee, setPayee] = useState<UpiAccount | null>(null);
-  const [paymentRef, setPaymentRef] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace(`/login?next=/booking/${bookingId}`);
@@ -76,8 +68,10 @@ export default function BookingPage() {
         setLoadError("That booking doesn't exist, or you don't have access to it.");
         return;
       }
-      setBooking(found);
-      setPaymentRef(found.paymentRef || "");
+      // Bookings made before payments were a list carry one screenshot and
+      // no amount; count that as a single full-amount transfer so the
+      // balance doesn't read as unpaid.
+      setBooking(withLegacyPayment(found));
       // Whichever account this booking was sent to. A booking made before
       // any UPI account existed has none recorded, so fall back to the one
       // they would be given today - and WRITE IT BACK. Showing an ID we
@@ -112,21 +106,6 @@ export default function BookingPage() {
     load();
   }, [load]);
 
-  async function resubmitPayment() {
-    if (!user || !booking || !file) return;
-    setSaving(true);
-    try {
-      const url = await uploadScreenshot(user.uid, booking.id, file);
-      await attachPayment(booking.id, url, paymentRef.trim());
-      toast.success("Sent for approval again.");
-      setFile(null);
-      await load();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed.");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   if (authLoading || !user || loading) return <FullPageSpinner />;
 
@@ -152,13 +131,12 @@ export default function BookingPage() {
   }
 
   const confirmed = booking.status === "CONFIRMED";
-  const missingToSubmit = [
-    !paymentRef.trim() && "the UPI reference number",
-    !file && "your payment screenshot",
-  ].filter(Boolean) as string[];
 
   return (
     <Shell onSignOut={signOut}>
+      <div className="no-print">
+        <VerifyEmailNotice />
+      </div>
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-neutral-900">
@@ -258,88 +236,16 @@ export default function BookingPage() {
         <Card className="no-print mt-6">
           <CardBody className="space-y-4">
             <h2 className="text-sm font-semibold text-neutral-900">
-              Upload your payment screenshot
+              Pay and upload your screenshot
             </h2>
 
-            <UpiPayPanel
+            <PaymentForm
+              booking={booking}
               settings={settings}
-              account={payee}
-              amount={booking.pricing.total}
-              note={booking.bookingCode}
-              onSwitch={async (next) => {
-                setPayee(next);
-                await setBookingPayee(booking.id, next.upiId, next.payeeName);
-              }}
+              payee={payee}
+              onPayeeChange={setPayee}
+              onAdded={load}
             />
-
-            <Field
-              label="UPI reference number"
-              required
-              hint="The transaction or UTR number your payment app shows after paying."
-            >
-              <Input
-                value={paymentRef}
-                onChange={(event) => setPaymentRef(event.target.value)}
-                required
-              />
-            </Field>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(event) => {
-                const picked = event.target.files?.[0] ?? null;
-                if (!picked) return;
-                const error = validateScreenshot(picked);
-                if (error) {
-                  toast.error(error);
-                  event.target.value = "";
-                  return;
-                }
-                setFile(picked);
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-300 px-4 py-6 text-sm font-medium text-neutral-600 hover:bg-neutral-50"
-            >
-              {file ? (
-                <>
-                  <Check className="h-4 w-4 text-emerald-600" />
-                  {file.name}
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" />
-                  Choose screenshot
-                </>
-              )}
-            </button>
-
-            <Button
-              className="w-full"
-              onClick={resubmitPayment}
-              loading={saving}
-              disabled={missingToSubmit.length > 0}
-            >
-              Send for approval
-            </Button>
-
-            {/* A greyed-out button with no reason is just a dead end. Say
-                what is still missing. */}
-            {missingToSubmit.length > 0 ? (
-              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-amber-700">
-                <CircleAlert className="h-3.5 w-3.5 shrink-0" />
-                Add {missingToSubmit.join(" and ")} to send this.
-              </p>
-            ) : (
-              <p className="text-center text-xs text-neutral-500">
-                Your seat is held once an admin confirms the payment.
-              </p>
-            )}
           </CardBody>
         </Card>
       )}

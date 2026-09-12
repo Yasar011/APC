@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,38 +9,33 @@ import {
   BadgeIndianRupee,
   Check,
   CircleAlert,
-  Loader2,
   Mountain,
-  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { TravellerForm, emptyTraveller } from "@/components/trip/TravellerForm";
 import { PriceBreakdown } from "@/components/trip/PriceBreakdown";
-import { UpiPayPanel } from "@/components/trip/UpiPayPanel";
+import { PaymentForm } from "@/components/trip/PaymentForm";
+import { VerifyEmailNotice } from "@/components/trip/VerifyEmailNotice";
 import {
   Button,
   Card,
   CardBody,
-  Field,
   FullPageSpinner,
   Input,
 } from "@/components/ui/primitives";
 import { normalisePromoCode, newBookingCode } from "@/lib/codes";
 import { promoRejectionReason, quote } from "@/lib/pricing";
 import {
-  attachPayment,
   createBooking,
   isNiftIdTaken,
   readMyBooking,
   readPromo,
   readSettings,
-  setBookingPayee,
 } from "@/lib/trip";
 import { activeUpiAccounts, pickUpiForUser } from "@/lib/upi";
-import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { DEFAULT_SETTINGS } from "@/lib/constants";
-import { PromoCode, Traveller, TripSettings, UpiAccount } from "@/lib/types";
+import { Booking, PromoCode, Traveller, TripSettings, UpiAccount } from "@/lib/types";
 import { rupees } from "@/lib/utils";
 
 type Step = "details" | "review" | "pay";
@@ -64,10 +59,8 @@ export default function BookPage() {
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [bookingCode, setBookingCode] = useState<string | null>(null);
   const [payee, setPayee] = useState<UpiAccount | null>(null);
-  const [paymentRef, setPaymentRef] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [payingBooking, setPayingBooking] = useState<Booking | null>(null);
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login?next=/book");
@@ -175,7 +168,7 @@ export default function BookPage() {
     try {
       const now = Date.now();
       const code = newBookingCode();
-      const id = await createBooking({
+      const draft: Omit<Booking, "id"> = {
         bookerUid: user.uid,
         bookerName: traveller.name || displayName,
         bookerEmail: user.email ?? "",
@@ -196,9 +189,13 @@ export default function BookPage() {
         verifiedAt: null,
         createdAt: now,
         updatedAt: now,
-      });
+      };
+      const id = await createBooking(draft);
       setBookingId(id);
       setBookingCode(code);
+      // Handed straight to <PaymentForm />, which needs a real booking to
+      // work out what is still owed.
+      setPayingBooking({ ...draft, id });
       setPayee(account);
       setStep("pay");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -217,22 +214,6 @@ export default function BookPage() {
     }
   }
 
-  async function submitPayment() {
-    if (!user || !bookingId || !file) return;
-    setSaving(true);
-    try {
-      const url = await uploadScreenshot(user.uid, bookingId, file);
-      await attachPayment(bookingId, url, paymentRef.trim());
-      toast.success("Sent for approval.");
-      router.replace(`/booking/${bookingId}`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Upload failed. Check your connection."
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
 
   if (authLoading || !user || loading) return <FullPageSpinner />;
 
@@ -277,13 +258,10 @@ export default function BookPage() {
 
   const seatsLeft = Math.max(0, settings.totalSeats - settings.seatsBooked);
   const noPaymentAccount = activeUpiAccounts(settings).length === 0;
-  const missingToSubmit = [
-    !paymentRef.trim() && "the UPI reference number",
-    !file && "your payment screenshot",
-  ].filter(Boolean) as string[];
 
   return (
     <Shell>
+      <VerifyEmailNotice />
       <Stepper step={step} />
 
       {step === "details" && (
@@ -406,7 +384,7 @@ export default function BookPage() {
         </div>
       )}
 
-      {step === "pay" && (
+      {step === "pay" && bookingId && payingBooking && (
         <div className="space-y-6">
           <Card>
             <CardBody>
@@ -414,108 +392,25 @@ export default function BookPage() {
                 <BadgeIndianRupee className="h-4 w-4 text-amber-600" />
                 Pay {rupees(pricing.total)}
               </div>
+              <p className="mt-1 text-xs text-neutral-500">
+                Booking {bookingCode}. Your seat is held once an admin confirms
+                the payment.
+              </p>
 
               <div className="mt-5">
-                <UpiPayPanel
+                <PaymentForm
+                  booking={payingBooking}
                   settings={settings}
-                  account={payee}
-                  amount={pricing.total}
-                  note={bookingCode ?? undefined}
-                  onSwitch={async (next) => {
-                    setPayee(next);
-                    if (bookingId) {
-                      await setBookingPayee(bookingId, next.upiId, next.payeeName);
-                    }
-                  }}
+                  payee={payee}
+                  onPayeeChange={setPayee}
+                  onAdded={() => router.replace(`/booking/${bookingId}`)}
                 />
               </div>
             </CardBody>
           </Card>
-
-          <Card>
-            <CardBody className="space-y-4">
-              <Field
-                label="UPI reference number"
-                required
-                hint="The transaction or UTR number your payment app shows after paying."
-              >
-                <Input
-                  value={paymentRef}
-                  onChange={(event) => setPaymentRef(event.target.value)}
-                  required
-                />
-              </Field>
-
-              <Field label="Payment screenshot" required>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    const picked = event.target.files?.[0] ?? null;
-                    if (!picked) return;
-                    const error = validateScreenshot(picked);
-                    if (error) {
-                      toast.error(error);
-                      event.target.value = "";
-                      return;
-                    }
-                    setFile(picked);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-300 px-4 py-6 text-sm font-medium text-neutral-600 hover:bg-neutral-50"
-                >
-                  {file ? (
-                    <>
-                      <Check className="h-4 w-4 text-emerald-600" />
-                      {file.name}
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4" />
-                      Choose screenshot
-                    </>
-                  )}
-                </button>
-              </Field>
-
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={submitPayment}
-                loading={saving}
-                disabled={missingToSubmit.length > 0}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading
-                  </>
-                ) : (
-                  "Send for approval"
-                )}
-              </Button>
-
-              {/* A greyed-out button with no reason is just a dead end. Say
-                  what is still missing. */}
-              {missingToSubmit.length > 0 ? (
-                <p className="flex items-center justify-center gap-1.5 text-center text-xs text-amber-700">
-                  <CircleAlert className="h-3.5 w-3.5 shrink-0" />
-                  Add {missingToSubmit.join(" and ")} to send this.
-                </p>
-              ) : (
-                <p className="text-center text-xs text-neutral-500">
-                  Your seat is held once an admin confirms the payment.
-                </p>
-              )}
-            </CardBody>
-          </Card>
         </div>
       )}
+
     </Shell>
   );
 }

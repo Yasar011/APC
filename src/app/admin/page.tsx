@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/primitives";
 import { listBookings, readFinance, readSettings, saveFinance, saveSettings } from "@/lib/trip";
 import { profit } from "@/lib/pricing";
+import { paymentState, withLegacyPayment } from "@/lib/payments";
 import { newUpiAccountId, upiAccounts } from "@/lib/upi";
 import {
   BOOKING_STATUS_COLORS,
@@ -68,7 +69,9 @@ function bookingsCsv(bookings: Booking[], finance: TripFinance): string {
     "Price",
     "Promo code",
     "Discount",
-    "Paid",
+    "Amount due",
+    "Amount paid",
+    "Still owed",
     "Paid to UPI",
     "Payee name",
     "Trip cost",
@@ -81,6 +84,7 @@ function bookingsCsv(bookings: Booking[], finance: TripFinance): string {
   const rows = bookings.map((booking) => {
     const traveller = booking.travellers[0];
     const split = profit(booking.pricing, finance);
+    const money = paymentState(withLegacyPayment(booking));
     return [
       booking.bookingCode,
       BOOKING_STATUS_LABELS[booking.status] ?? booking.status,
@@ -103,6 +107,8 @@ function bookingsCsv(bookings: Booking[], finance: TripFinance): string {
       booking.pricing.promoCode ?? "",
       booking.pricing.discount,
       booking.pricing.total,
+      money.paid,
+      money.outstanding,
       booking.payeeUpiId ?? "",
       booking.payeeName ?? "",
       // Cost and margin only mean anything once the money is in.

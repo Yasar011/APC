@@ -112,6 +112,14 @@ export function upiPayUri(
   amount: number,
   note?: string
 ) {
+  return `upi://pay?${payParams(account, amount, note)}`;
+}
+
+function payParams(
+  account: Pick<UpiAccount, "upiId" | "payeeName">,
+  amount: number,
+  note?: string
+) {
   const params = [
     `pa=${encodeURIComponent(account.upiId)}`,
     `pn=${encodeURIComponent(account.payeeName || "APC Club")}`,
@@ -119,5 +127,31 @@ export function upiPayUri(
   ];
   if (amount > 0) params.push(`am=${amount.toFixed(2)}`);
   if (note) params.push(`tn=${encodeURIComponent(note)}`);
-  return `upi://pay?${params.join("&")}`;
+  return params.join("&");
+}
+
+/**
+ * Buttons that open a specific UPI app with the amount already filled in.
+ *
+ * A bare `upi://` link makes Android show a chooser, which is fine — but on
+ * a phone with several payment apps installed it is one more decision at
+ * the worst moment, and on some launchers it silently does nothing. Each
+ * app also answers to its own scheme with the same query string, so naming
+ * them gives a student one tap to the app they actually use.
+ *
+ * These are Android schemes. iOS mostly ignores them, which is why the QR
+ * is always shown as well and never hidden behind a button.
+ */
+export function upiAppLinks(
+  account: Pick<UpiAccount, "upiId" | "payeeName">,
+  amount: number,
+  note?: string
+) {
+  const query = payParams(account, amount, note);
+  return [
+    { name: "Google Pay", href: `tez://upi/pay?${query}`, tint: "#1a73e8" },
+    { name: "PhonePe", href: `phonepe://pay?${query}`, tint: "#5f259f" },
+    { name: "Paytm", href: `paytmmp://pay?${query}`, tint: "#00baf2" },
+    { name: "Any UPI app", href: `upi://pay?${query}`, tint: "#16323f" },
+  ];
 }

@@ -1,3 +1,4 @@
+import { paymentState, withLegacyPayment } from "./payments";
 import { Booking, TripSettings } from "./types";
 
 /**
@@ -29,7 +30,10 @@ export const SHEET_COLUMNS = [
   "Emergency contact",
   "Emergency phone",
   "Relation",
+  "Amount due",
   "Amount paid",
+  "Still owed",
+  "Transfers",
   "Promo code",
   "Paid to UPI",
   "Booked at",
@@ -45,6 +49,10 @@ function stamp(value: number | null): string {
 /** One booking as a row, in SHEET_COLUMNS order. */
 export function sheetRow(booking: Booking): (string | number)[] {
   const traveller = booking.travellers[0];
+  // A seat is often paid in two transfers - the bank caps the first payment
+  // to a new UPI ID - so the sheet carries the running total, not just the
+  // price, and "Still owed" is the column worth sorting on.
+  const money = paymentState(withLegacyPayment(booking));
   return [
     booking.bookingCode,
     booking.status,
@@ -64,6 +72,9 @@ export function sheetRow(booking: Booking): (string | number)[] {
     traveller?.emergencyContactPhone ?? "",
     traveller?.emergencyContactRelation ?? "",
     booking.pricing.total,
+    money.paid,
+    money.outstanding,
+    money.transfers.length,
     booking.pricing.promoCode ?? "",
     booking.payeeUpiId ?? "",
     stamp(booking.createdAt),

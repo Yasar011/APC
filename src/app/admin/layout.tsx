@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { ClipboardList, LogOut, Mountain, QrCode, Tag, Users } from "lucide-react";
+import {
+  ClipboardList,
+  LogOut,
+  MessageCircle,
+  Mountain,
+  QrCode,
+  Tag,
+  Users,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button, Card, CardBody, FullPageSpinner } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
@@ -13,6 +21,7 @@ const NAV = [
   { href: "/admin/scan", label: "Bus check-in", icon: QrCode },
   { href: "/admin/roster", label: "Roster", icon: Users },
   { href: "/admin/promos", label: "Promo codes", icon: Tag },
+  { href: "/admin/join", label: "Group requests", icon: MessageCircle },
 ];
 
 const SCANNER_PATH = "/admin/scan";

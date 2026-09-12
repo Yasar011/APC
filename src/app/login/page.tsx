@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
@@ -56,6 +57,19 @@ function LoginForm() {
       } else {
         const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         await updateProfile(credential.user, { displayName: name.trim() });
+        // Confirms the address is real and reachable before we rely on it
+        // to send them their ticket.
+        try {
+          await sendEmailVerification(credential.user);
+          toast.success("Check your email to verify your address.", {
+            description:
+              "It often lands in Spam or Promotions — look there before asking.",
+            duration: 8000,
+          });
+        } catch {
+          // A verification mail that won't send must not block signing up;
+          // it can be re-sent from the booking page.
+        }
       }
       router.replace(next);
     } catch (error) {

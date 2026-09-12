@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Copy, RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/primitives";
-import { activeUpiAccounts, nextUpiAccount, upiPayUri } from "@/lib/upi";
+import { activeUpiAccounts, nextUpiAccount, upiAppLinks, upiPayUri } from "@/lib/upi";
 import { qrDataUrl } from "@/lib/qr";
 import { TripSettings, UpiAccount } from "@/lib/types";
 import { rupees } from "@/lib/utils";
@@ -37,6 +37,7 @@ export function UpiPayPanel({
   const accounts = activeUpiAccounts(settings);
 
   const payUri = account ? upiPayUri(account, amount, note) : null;
+  const appLinks = account ? upiAppLinks(account, amount, note) : [];
 
   // The QR is generated from the payment link rather than uploaded, so the
   // amount is always right and there is no image to keep in sync.
@@ -126,14 +127,31 @@ export function UpiPayPanel({
         </div>
       )}
 
-      {payUri && (
-        <a
-          href={payUri}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#16323f] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0f242e] sm:hidden"
-        >
-          <Smartphone className="h-4 w-4" />
-          Open a UPI app to pay
-        </a>
+      {/* One tap straight into the app they use, amount already filled in.
+          Android only - iOS ignores these schemes, which is why the QR
+          above is always shown and never hidden behind a button. */}
+      {appLinks.length > 0 && (
+        <div className="sm:hidden">
+          <p className="mb-2 text-center text-xs text-neutral-500">
+            Or open your app directly
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {appLinks.map((app) => (
+              <a
+                key={app.name}
+                href={app.href}
+                className="flex items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: app.tint }}
+              >
+                <Smartphone className="h-4 w-4" />
+                {app.name}
+              </a>
+            ))}
+          </div>
+          <p className="mt-2 text-center text-xs text-neutral-500">
+            Nothing opened? Scan the QR above instead.
+          </p>
+        </div>
       )}
 
       <p className="flex items-start gap-2 text-xs text-neutral-500">
