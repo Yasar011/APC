@@ -8,7 +8,7 @@ export type BookingStatus =
   | "REJECTED"
   | "CANCELLED";
 
-export type DiscountKind = "NONE" | "GROUP" | "PROMO";
+export type DiscountKind = "NONE" | "PROMO";
 
 export type PromoType = "FLAT" | "PERCENT";
 
@@ -18,13 +18,8 @@ export interface TripSettings {
   destination: string;
   startDate: string;
   endDate: string;
-  /** Per head, before any discount. */
+  /** Per head, before any discount. One seat per booking. */
   pricePerPerson: number;
-  /** Seats needed to earn the group discount. */
-  groupSize: number;
-  /** Flat amount off the WHOLE booking once groupSize is reached. */
-  groupDiscountAmount: number;
-  maxSeatsPerBooking: number;
   totalSeats: number;
   seatsBooked: number;
   bookingsOpen: boolean;
@@ -74,22 +69,22 @@ export interface ProfitBreakdown {
   collected: number;
   /** baseCostPerPerson x seats - the part that goes straight back out. */
   cost: number;
-  /** Margin before any discount came off. */
+  /** Margin before any promo came off. */
   grossProfit: number;
-  /** What came off the price. Discounts eat the margin, not the cost. */
+  /** What came off the price. A discount eats the margin, not the cost. */
   discount: number;
   /** grossProfit - discount. Negative means this booking loses money. */
   netProfit: number;
 }
 
 export interface PricingBreakdown {
+  /** Always 1 — a booking is one person. Kept so tickets and the roster,
+   *  which count seats, keep working if that ever changes. */
   seats: number;
   pricePerPerson: number;
   subtotal: number;
-  groupDiscount: number;
   promoCode: string | null;
   promoDiscount: number;
-  /** Which discount actually applied — they never stack. */
   discountApplied: DiscountKind;
   discount: number;
   total: number;
@@ -102,7 +97,9 @@ export interface Booking {
   bookerEmail: string;
   bookerPhone: string;
   niftId: string;
+  /** Always 1. */
   seats: number;
+  /** Exactly one entry — the person travelling, who is also the booker. */
   travellers: Traveller[];
   pricing: PricingBreakdown;
   paymentScreenshotUrl: string | null;

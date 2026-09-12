@@ -39,3 +39,19 @@ export function normalisePromoCode(input: string) {
 export function isValidKey(value: string) {
   return value.length > 0 && !/[.$#\[\]/]/.test(value);
 }
+
+/**
+ * Turns a NIFT ID into a database key so one ID can claim one booking.
+ *
+ * Realtime Database keys cannot contain . $ # [ ] / and NIFT IDs often do
+ * (BD/21/123), so those become dashes. Case and spacing are normalised too,
+ * which means "bd/21/123" and "BD-21-123" claim the same key - deliberately,
+ * since they are the same student written two ways.
+ */
+export function niftIdKey(niftId: string) {
+  return niftId
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[.$#\[\]/]/g, "-");
+}

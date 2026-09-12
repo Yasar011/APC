@@ -180,12 +180,15 @@
         "$bookingId": {
           ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
           ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
-          ".validate": "newData.hasChildren(['bookerUid', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
+          ".validate": "newData.hasChildren(['bookerUid', 'niftId', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
           "bookerUid": {
             ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
           },
           "seats": {
-            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= (root.child('jawaiTrip/settings/maxSeatsPerBooking').exists() ? root.child('jawaiTrip/settings/maxSeatsPerBooking').val() : 5)"
+            ".validate": "newData.isNumber() && newData.val() === 1"
+          },
+          "niftId": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40 && (!data.exists() || newData.val() === data.val())"
           },
           "status": {
             ".validate": "newData.isString() && (((newData.val() === 'AWAITING_PAYMENT' || newData.val() === 'PENDING_VERIFICATION') && (newData.parent().child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))) || ((newData.val() === 'CONFIRMED' || newData.val() === 'REJECTED' || newData.val() === 'CANCELLED') && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')))"
@@ -207,6 +210,14 @@
       "bookingCodeIndex": {
         ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
         "$bookingCode": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".validate": "newData.isString()"
+        }
+      },
+      "niftIdIndex": {
+        ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        "$niftId": {
           ".read": "auth != null",
           ".write": "auth != null && (!data.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
           ".validate": "newData.isString()"

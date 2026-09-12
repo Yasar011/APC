@@ -41,9 +41,8 @@ import {
   BOOKING_STATUS_COLORS,
   BOOKING_STATUS_LABELS,
   DEFAULT_FINANCE,
-  DEFAULT_SETTINGS,
 } from "@/lib/constants";
-import { Booking, PricingBreakdown, TripFinance, TripSettings } from "@/lib/types";
+import { Booking, PricingBreakdown, TripFinance } from "@/lib/types";
 import { formatDateTime, rupees } from "@/lib/utils";
 
 /**
@@ -62,8 +61,8 @@ function auditPricing(pricing: PricingBreakdown) {
   if (pricing.subtotal !== pricing.pricePerPerson * pricing.seats) {
     problems.push("Subtotal doesn't match price per person times seats.");
   }
-  if (pricing.discount !== Math.max(pricing.groupDiscount, pricing.promoDiscount)) {
-    problems.push("Discount isn't the larger of the group and promo discounts.");
+  if (pricing.discount !== pricing.promoDiscount) {
+    problems.push("Discount doesn't match the promo discount.");
   }
   if (pricing.total !== pricing.subtotal - pricing.discount) {
     problems.push("Total doesn't equal subtotal minus discount.");
@@ -79,7 +78,6 @@ export default function AdminBookingDetailPage() {
   const { user, displayName } = useAuth();
 
   const [booking, setBooking] = useState<Booking | null>(null);
-  const [settings, setSettings] = useState<TripSettings>(DEFAULT_SETTINGS as TripSettings);
   const [finance, setFinance] = useState<TripFinance>(DEFAULT_FINANCE as TripFinance);
   const [recomputed, setRecomputed] = useState<PricingBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,7 +94,6 @@ export default function AdminBookingDetailPage() {
         readSettings(),
         readFinance(),
       ]);
-      setSettings(tripSettings);
       setFinance(tripFinance);
       if (!found) {
         setLoadError("That booking doesn't exist.");
@@ -107,7 +104,7 @@ export default function AdminBookingDetailPage() {
       const promo = found.pricing.promoCode
         ? await readPromo(found.pricing.promoCode)
         : null;
-      setRecomputed(quote(found.seats, tripSettings, promo));
+      setRecomputed(quote(tripSettings, promo));
       setLoadError(null);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not load this booking.");
@@ -252,7 +249,7 @@ export default function AdminBookingDetailPage() {
               <h2 className="mb-4 text-sm font-semibold text-neutral-900">
                 Amount to check against the screenshot
               </h2>
-              <PriceBreakdown pricing={booking.pricing} groupSize={settings.groupSize} />
+              <PriceBreakdown pricing={booking.pricing} />
 
               <p className="mt-4 rounded-lg bg-neutral-900 px-4 py-3 text-center text-lg font-semibold text-white">
                 Expect {rupees(booking.pricing.total)}
@@ -314,8 +311,7 @@ export default function AdminBookingDetailPage() {
                   disabled={!booking.paymentScreenshotUrl}
                 >
                   <Check className="h-4 w-4" />
-                  Confirm and issue {booking.seats}{" "}
-                  {booking.seats === 1 ? "ticket" : "tickets"}
+                  Confirm and issue the ticket
                 </Button>
                 <Button
                   variant="outline"

@@ -130,18 +130,14 @@ export default function PromosPage() {
     );
   }
 
-  // What this code is actually worth on a full group, next to the group
-  // discount it competes with - they never stack.
-  const groupDiscount = settings.groupDiscountAmount;
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-neutral-900">Promo codes</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Students get the bigger of their promo and the {rupees(groupDiscount)} group
-            discount — never both.
+            The only discount there is. A code worth more than the margin puts the booking
+            below cost.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>
@@ -165,7 +161,7 @@ export default function PromosPage() {
                 <tr>
                   <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Discount</th>
-                  <th className="px-4 py-3">On 5 seats</th>
+                  <th className="px-4 py-3">Off a seat</th>
                   <th className="px-4 py-3">Used</th>
                   <th className="px-4 py-3">Expires</th>
                   <th className="px-4 py-3">Status</th>
@@ -174,7 +170,7 @@ export default function PromosPage() {
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {promos.map((promo) => {
-                  const onFullGroup = quote(settings.groupSize, settings, promo);
+                  const onASeat = quote(settings, promo);
                   return (
                     <tr key={promo.code} className="hover:bg-neutral-50">
                       <td className="px-4 py-3 font-mono font-semibold">{promo.code}</td>
@@ -184,15 +180,13 @@ export default function PromosPage() {
                           : `${promo.value}%`}
                       </td>
                       <td className="px-4 py-3 text-xs">
-                        {onFullGroup.discountApplied === "PROMO" ? (
-                          <span className="text-emerald-700">
-                            wins — {rupees(onFullGroup.promoDiscount)} off
-                          </span>
-                        ) : (
-                          <span className="text-neutral-400">
-                            group discount wins ({rupees(onFullGroup.groupDiscount)})
-                          </span>
-                        )}
+                        <span className="text-emerald-700">
+                          {rupees(onASeat.promoDiscount)} off
+                        </span>
+                        <span className="text-neutral-400">
+                          {" "}
+                          &rarr; {rupees(onASeat.total)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 tabular-nums">
                         {promo.usedCount}
@@ -294,9 +288,9 @@ export default function PromosPage() {
           </div>
 
           <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-            On a full group of {settings.groupSize} this would take{" "}
+            This takes{" "}
             {rupees(
-              quote(settings.groupSize, settings, {
+              quote(settings, {
                 code: "PREVIEW",
                 type: form.type,
                 value: form.value,
@@ -307,7 +301,7 @@ export default function PromosPage() {
                 createdAt: 0,
               }).promoDiscount
             )}{" "}
-            off, against the {rupees(groupDiscount)} group discount. The bigger one applies.
+            off a {rupees(settings.pricePerPerson)} seat.
           </p>
         </div>
 

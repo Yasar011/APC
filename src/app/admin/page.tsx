@@ -138,8 +138,8 @@ export default function AdminBookingsPage() {
               tone={netProfit < 0 ? "bad" : "good"}
               hint={
                 totalDiscount > 0
-                  ? `after ${rupees(totalDiscount)} of discounts`
-                  : "no discounts given"
+                  ? `after ${rupees(totalDiscount)} of promo discounts`
+                  : "no promo discounts given"
               }
             />
           </div>
@@ -363,27 +363,6 @@ function SettingsModal({
             onChange={(e) => set("pricePerPerson", Number(e.target.value))}
           />
         </Field>
-        <Field label="Seats for the group discount">
-          <Input
-            type="number"
-            value={form.groupSize}
-            onChange={(e) => set("groupSize", Number(e.target.value))}
-          />
-        </Field>
-        <Field label="Group discount (off the whole booking)">
-          <Input
-            type="number"
-            value={form.groupDiscountAmount}
-            onChange={(e) => set("groupDiscountAmount", Number(e.target.value))}
-          />
-        </Field>
-        <Field label="Max seats per booking">
-          <Input
-            type="number"
-            value={form.maxSeatsPerBooking}
-            onChange={(e) => set("maxSeatsPerBooking", Number(e.target.value))}
-          />
-        </Field>
         <Field label="Total seats on the trip">
           <Input
             type="number"
@@ -482,20 +461,19 @@ function SettingsModal({
           </div>
 
           <p className="mt-4 rounded-lg bg-white px-3 py-2 text-xs text-neutral-600">
-            A full group of {form.groupSize} collects{" "}
-            {rupees(form.pricePerPerson * form.groupSize - form.groupDiscountAmount)}, of
-            which {rupees(costForm.baseCostPerPerson * form.groupSize)} is trip cost and{" "}
+            Every seat collects {rupees(form.pricePerPerson)}, of which{" "}
+            {rupees(costForm.baseCostPerPerson)} is trip cost and{" "}
             <span
               className={
-                marginPerSeat * form.groupSize - form.groupDiscountAmount < 0
+                marginPerSeat < 0
                   ? "font-semibold text-red-700"
                   : "font-semibold text-emerald-700"
               }
             >
-              {rupees(marginPerSeat * form.groupSize - form.groupDiscountAmount)}
+              {rupees(marginPerSeat)}
             </span>{" "}
-            is what the club keeps after the {rupees(form.groupDiscountAmount)} group
-            discount.
+            is what the club keeps. A promo code comes out of that margin, so anything over{" "}
+            {rupees(Math.max(0, marginPerSeat))} puts a booking below cost.
           </p>
         </div>
 

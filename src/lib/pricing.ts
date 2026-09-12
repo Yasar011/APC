@@ -7,31 +7,22 @@ import {
 } from "./types";
 
 /**
- * The single source of truth for what a booking costs. The booking form,
- * the student's status page and the admin verifier all call this, so a
- * discount can never be shown one way and charged another.
+ * What a booking costs. One seat per booking, so this is the ticket price
+ * less a promo code if one was used.
  *
- * Two discounts exist and they DO NOT STACK - whichever saves more wins:
+ * There was a group discount here - 199 off when five people booked
+ * together - but bookings are one person now, so a "group" cannot exist and
+ * the discount went with it. Promo codes are the only discount left.
  *
- *   - group: a flat amount off the whole booking once the group is full
- *     (99 off at 5 seats, so 5 x 2099 = 10,495 becomes 10,396)
- *   - promo: a flat amount or a percentage, from a code
- *
- * A tie goes to the group discount, so a promo code can never be "used up"
- * without actually saving anyone money.
+ * Every screen that shows a price calls this: the booking form, the
+ * student's booking page and the admin verifier. Nobody can be shown one
+ * number and charged another.
  */
 export function quote(
-  seats: number,
-  settings: Pick<TripSettings, "pricePerPerson" | "groupSize" | "groupDiscountAmount">,
+  settings: Pick<TripSettings, "pricePerPerson">,
   promo?: PromoCode | null
 ): PricingBreakdown {
-  const safeSeats = Math.max(0, Math.floor(seats));
-  const subtotal = settings.pricePerPerson * safeSeats;
-
-  const groupDiscount =
-    safeSeats >= settings.groupSize
-      ? Math.min(settings.groupDiscountAmount, subtotal)
-      : 0;
+  const subtotal = settings.pricePerPerson;
 
   let promoDiscount = 0;
   if (promo && promo.active) {
@@ -40,20 +31,15 @@ export function quote(
     promoDiscount = Math.max(0, Math.min(raw, subtotal));
   }
 
-  const discount = Math.max(groupDiscount, promoDiscount);
-  const discountApplied =
-    discount === 0 ? "NONE" : promoDiscount > groupDiscount ? "PROMO" : "GROUP";
-
   return {
-    seats: safeSeats,
+    seats: 1,
     pricePerPerson: settings.pricePerPerson,
     subtotal,
-    groupDiscount,
-    promoCode: discountApplied === "PROMO" && promo ? promo.code : null,
+    promoCode: promoDiscount > 0 && promo ? promo.code : null,
     promoDiscount,
-    discountApplied,
-    discount,
-    total: subtotal - discount,
+    discountApplied: promoDiscount > 0 ? "PROMO" : "NONE",
+    discount: promoDiscount,
+    total: subtotal - promoDiscount,
   };
 }
 
@@ -61,27 +47,26 @@ export function quote(
  * Splits a booking into what the trip costs and what the club keeps.
  *
  * The ticket price is one number to the student (2099), but it is really
- * two: the seat's actual cost (2000 - bus, stay, safari) and the club's
+ * two: the seat's actual cost (2000 - bus, food, safari) and the club's
  * margin (99). The cost is fixed and has to be paid to suppliers whatever
  * happens, so **a discount comes out of the margin, never out of the
- * cost**. Five seats at a 199 group discount collects 10,296, of which
- * 10,000 is cost and 296 is what the club actually keeps.
+ * cost**. A promo bigger than 99 therefore puts the booking below cost, and
+ * netProfit goes negative to say so.
  *
- * Admin-only: students never see any of this. It is computed on demand
- * from jawaiTrip/finance rather than stored on the booking, so the margin
- * cannot leak through a booking the student is allowed to read.
+ * Admin-only: students never see any of this. It is computed on demand from
+ * jawaiTrip/finance rather than stored on the booking, so the margin cannot
+ * leak through a booking the student is allowed to read.
  */
 export function profit(
   pricing: PricingBreakdown,
   finance: Pick<TripFinance, "baseCostPerPerson">
 ): ProfitBreakdown {
   const cost = finance.baseCostPerPerson * pricing.seats;
-  const grossProfit = pricing.subtotal - cost;
 
   return {
     collected: pricing.total,
     cost,
-    grossProfit,
+    grossProfit: pricing.subtotal - cost,
     discount: pricing.discount,
     netProfit: pricing.total - cost,
   };

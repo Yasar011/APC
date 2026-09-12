@@ -5,9 +5,9 @@ Booking site for the APC Club's adventure trip to Jawai, NIFT Jodhpur.
 A one-day trip: the bus leaves campus in the morning, and everyone is back the same night.
 Bus, food and the safari are all in the price.
 
-Students book up to 5 seats on one NIFT ID, fill in blood group / medical details /
-emergency contacts for everyone travelling, pay by UPI, and get QR tickets once an admin
-verifies the payment. On trip day the QRs are scanned at the bus.
+**One seat per NIFT ID.** A student fills in their details, blood group, medical conditions
+and emergency contact, pays by UPI, and gets a QR ticket once an admin verifies the payment.
+On trip day the QR is scanned at the bus.
 
 Built with Next.js 16 (App Router), TypeScript, Tailwind v4, and **APC's existing Firebase
 project** — the same Auth accounts and the same Realtime Database as movie night.
@@ -99,7 +99,8 @@ that touches file storage.
 ### 5. Trip settings
 
 Sign in as an admin, open `/admin`, click **Trip settings**, and fill in dates, price, UPI
-ID, seat count and trip lead contact. The public page reads these live.
+ID, total seats and trip lead contact. The **Cost and profit** section there holds the
+admin-only ₹2000 figure. The public page reads the rest live.
 
 ---
 
@@ -109,12 +110,11 @@ ID, seat count and trip lead contact. The public page reads these live.
 
 What the student sees:
 
-- **₹2099 per person**
-- **₹199 off the whole booking** when all 5 seats are booked together → **₹10,296**
-- **Promo codes** — flat or percentage
-- **Discounts never stack.** A booking gets the *larger* of the group discount and the
-  promo code, never both. A tie goes to the group discount, so a promo code is never
-  consumed without saving anyone money.
+- **₹2099 per seat**, and a booking is one seat
+- **Promo codes** — flat or percentage — the only discount there is
+
+There used to be a ₹199 group discount for five people booking together. Bookings are one
+person now, so a group cannot exist and the discount went with it.
 
 `quote()` in `src/lib/pricing.ts` is the only place this is calculated. The booking form,
 the student's booking page and the admin verifier all call it, so nobody sees one number and
@@ -126,43 +126,45 @@ That ₹2099 is really two numbers: **₹2000 the seat actually costs** the club
 safari) and **₹99 the club keeps**. `profit()` in the same file splits them.
 
 **A discount comes out of the margin, never out of the cost** — suppliers get paid whatever
-happens. So a full group of 5:
+happens. So a seat sold with a ₹50 promo:
 
 | | |
 |---|---|
-| Collected | ₹10,296 |
-| Trip cost (₹2000 × 5) | ₹10,000 |
-| Margin before discount | ₹495 |
-| Group discount | −₹199 |
-| **Club keeps** | **₹296** |
+| Collected | ₹2,049 |
+| Trip cost | −₹2,000 |
+| Margin before discount | ₹99 |
+| Promo | −₹50 |
+| **Club keeps** | **₹49** |
+
+Which is why **a promo code worth more than ₹99 sells the seat below cost.** The admin
+dashboard and the booking page both turn red when that happens rather than quietly showing
+a smaller number.
 
 The base cost lives in **`jawaiTrip/finance`**, which is admin-read-only — *not* in
 `settings`, because settings are world-readable so the public page can show the price. The
 margin is never visible to a student, and never stored on a booking they can read.
 
 `/admin` totals collected, trip cost and profit separately across all confirmed bookings,
-and each booking shows its own split. If a promo code is bigger than the margin, net profit
-goes negative and both the booking and the dashboard say so in red.
+and each booking shows its own split.
 
 ### Booking flow
 
 ```
-seats → traveller details → review + promo → UPI payment → upload screenshot
-     → admin verifies → CONFIRMED → QR tickets issued
+your details → review + promo → UPI payment → upload screenshot
+     → admin verifies → CONFIRMED → QR ticket issued
 ```
 
 A rejected payment doesn't lose the booking: the student sees the reason and re-uploads.
 
-One live booking per account. The booker is always traveller 1.
+**One seat per NIFT ID**, enforced in two places. The form checks before you go on, so you
+get a plain message rather than a failure at the end; and `jawaiTrip/niftIdIndex` makes the
+ID itself the lock — the rules only let an *unclaimed* key be written, so two people
+submitting the same ID at the same moment cannot both get a seat. To free an ID after a
+cancellation or a typo, delete its key under `jawaiTrip/niftIdIndex`.
 
 ### QR codes
 
-Every confirmed booking gets:
-
-- **one QR per traveller** — checks that person in individually
-- **one QR for the booking** — checks the whole group in at once
-
-A ticket's QR encodes only its ticket code, and that code *is* the database key, so a scan
+Every confirmed booking gets one QR. A ticket's QR encodes only its ticket code, and that code *is* the database key, so a scan
 is a single key lookup. That is what makes the scanner usable on a weak signal. Codes use an
 alphabet with no `O/0` or `I/1`, so the code printed under each QR can be typed in by hand
 without ambiguity.
@@ -174,7 +176,7 @@ blood group, conditions, allergies and emergency contact right there — that's 
 the information is actually needed.
 
 **Print `/admin/roster` before leaving.** Jawai has patchy signal. The roster is the whole
-manifest on paper: every traveller with blood group, conditions, allergies, medication and
+manifest on paper: everyone with their blood group, conditions, allergies, medication and
 who to call, with anyone who declared something highlighted. It's the fallback for no
 network, and the reason the medical fields are collected at all.
 
@@ -190,8 +192,9 @@ Everything under `jawaiTrip`:
 | `finance` | What a seat costs the club. **Admin-only** — never world-readable. |
 | `bookings/$id` | Booker, travellers, pricing breakdown, payment proof, status. |
 | `bookingsByUser/$uid/$id` | "Does this person already have a booking?" |
-| `bookingCodeIndex/$code` | Booking QR → booking id. |
-| `tickets/$ticketCode` | One per traveller. **The key is the QR payload.** |
+| `bookingCodeIndex/$code` | Booking code → booking id. |
+| `niftIdIndex/$niftId` | **One seat per NIFT ID** — the claim that enforces it. |
+| `tickets/$ticketCode` | One per booking. **The key is the QR payload.** |
 | `ticketsByBooking/$id/$code` | Tickets belonging to a booking. |
 | `promoCodes/$CODE` | Promo codes. |
 

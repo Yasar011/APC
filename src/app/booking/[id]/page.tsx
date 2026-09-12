@@ -31,7 +31,6 @@ import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, DEFAULT_SETTINGS } from "@/lib/constants";
 import { Booking, Ticket, TripSettings } from "@/lib/types";
 import { formatDateTime, rupees } from "@/lib/utils";
-import { qrDataUrl } from "@/lib/qr";
 
 export default function BookingPage() {
   const params = useParams<{ id: string }>();
@@ -42,7 +41,6 @@ export default function BookingPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [settings, setSettings] = useState<TripSettings>(DEFAULT_SETTINGS as TripSettings);
-  const [groupQr, setGroupQr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -72,12 +70,7 @@ export default function BookingPage() {
       setPaymentRef(found.paymentRef || "");
 
       if (found.status === "CONFIRMED") {
-        const [issued, qr] = await Promise.all([
-          readTicketsForBooking(found.id),
-          qrDataUrl(found.bookingCode, 220),
-        ]);
-        setTickets(issued);
-        setGroupQr(qr);
+        setTickets(await readTicketsForBooking(found.id));
       }
       setLoadError(null);
     } catch (error) {
@@ -142,8 +135,7 @@ export default function BookingPage() {
             {settings.tripName || "Jawai Safari"}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Booking {booking.bookingCode} &middot; {booking.seats}{" "}
-            {booking.seats === 1 ? "seat" : "seats"}
+            Booking {booking.bookingCode} &middot; {booking.niftId}
           </p>
         </div>
         <Badge className={BOOKING_STATUS_COLORS[booking.status]}>
@@ -189,40 +181,16 @@ export default function BookingPage() {
             title="You're confirmed"
             body={`Approved by ${booking.verifiedByName ?? "an admin"} on ${formatDateTime(
               booking.verifiedAt
-            )}. Bring these QR codes to the bus.`}
+            )}. Bring this QR code to the bus.`}
           />
 
           <div className="no-print mb-6 flex justify-end">
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4" />
-              Print tickets
+              Print ticket
             </Button>
           </div>
 
-          {groupQr && (
-            <Card className="print-break mb-6">
-              <CardBody className="flex flex-col items-center text-center sm:flex-row sm:text-left">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={groupQr}
-                  alt={`Group QR for booking ${booking.bookingCode}`}
-                  className="h-36 w-36 shrink-0"
-                />
-                <div className="mt-4 sm:ml-6 sm:mt-0">
-                  <p className="text-sm font-semibold text-neutral-900">
-                    Group check-in code
-                  </p>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    One scan checks in everyone on this booking. Handy if you all board
-                    together — otherwise each person can use their own QR below.
-                  </p>
-                  <p className="mt-3 font-mono text-lg font-semibold tracking-[0.2em] text-neutral-900">
-                    {booking.bookingCode}
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
-          )}
 
           <div className="grid gap-5 sm:grid-cols-2">
             {tickets.map((ticket) => (
@@ -304,13 +272,13 @@ export default function BookingPage() {
       <Card className="no-print mt-6">
         <CardBody>
           <h2 className="mb-4 text-sm font-semibold text-neutral-900">What you paid</h2>
-          <PriceBreakdown pricing={booking.pricing} groupSize={settings.groupSize} />
+          <PriceBreakdown pricing={booking.pricing} />
         </CardBody>
       </Card>
 
       <Card className="no-print mt-6">
         <CardBody>
-          <h2 className="text-sm font-semibold text-neutral-900">Who&apos;s going</h2>
+          <h2 className="text-sm font-semibold text-neutral-900">Your details</h2>
           <ul className="mt-4 divide-y divide-neutral-100">
             {booking.travellers.map((traveller, index) => (
               <li key={index} className="py-3">

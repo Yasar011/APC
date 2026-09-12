@@ -7,24 +7,27 @@
     "protecting APC's movie night data (roles, settings, promoCodes,",
     "movieSeats, bookings).",
     "",
-    "To install: open the Firebase console -> Realtime Database -> Rules, and",
-    "paste the 'jawaiTrip' block below INSIDE the existing top-level 'rules'",
-    "object, as a sibling of the keys already there. Then Publish.",
+    "To install: Firebase console -> Realtime Database -> Rules, and paste the",
+    "'jawaiTrip' block below INSIDE the existing top-level 'rules' object, as a",
+    "sibling of the keys already there. Then Publish.",
     "",
     "Delete this ___README___ key when you paste - it is documentation only.",
+    "database.rules.MERGED-EXAMPLE.json is the finished result to compare with.",
     "",
     "ADMINS: this app reuses APC's existing top-level `roles` node rather than",
-    "keeping its own list. Anyone who is already roles/<uid> == 'admin' (or the",
+    "keeping its own list. Anyone already roles/<uid> == 'admin' (or the",
     "founding uid hardcoded in the rules) is a trip admin with nothing to set",
     "up. roles/<uid> == 'staff' can scan people onto the bus and nothing else -",
     "no payments, no roster, no margin.",
     "",
-    "No .indexOn entries are needed: every read here is a direct key lookup",
-    "or a whole-node read by an admin, never an orderByChild query.",
+    "ONE SEAT PER NIFT ID: seats is validated to exactly 1, and niftIdIndex",
+    "makes the ID itself the lock. An unclaimed key can be written by any",
+    "signed-in user, a claimed one only by an admin - so two people submitting",
+    "the same ID at the same moment cannot both get a seat. To free an ID (a",
+    "cancellation, a typo), delete its key under jawaiTrip/niftIdIndex.",
     "",
-    "The seat cap is read from jawaiTrip/settings/maxSeatsPerBooking, so",
-    "raising it in the admin UI takes effect here too - no rules edit needed.",
-    "Before settings exist it falls back to 5."
+    "No .indexOn entries are needed: every read here is a direct key lookup",
+    "or a whole-node read by an admin, never an orderByChild query."
   ],
   "jawaiTrip": {
     "settings": {
@@ -40,12 +43,15 @@
       "$bookingId": {
         ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
         ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
-        ".validate": "newData.hasChildren(['bookerUid', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
+        ".validate": "newData.hasChildren(['bookerUid', 'niftId', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
         "bookerUid": {
           ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
         },
         "seats": {
-          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= (root.child('jawaiTrip/settings/maxSeatsPerBooking').exists() ? root.child('jawaiTrip/settings/maxSeatsPerBooking').val() : 5)"
+          ".validate": "newData.isNumber() && newData.val() === 1"
+        },
+        "niftId": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40 && (!data.exists() || newData.val() === data.val())"
         },
         "status": {
           ".validate": "newData.isString() && (((newData.val() === 'AWAITING_PAYMENT' || newData.val() === 'PENDING_VERIFICATION') && (newData.parent().child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))) || ((newData.val() === 'CONFIRMED' || newData.val() === 'REJECTED' || newData.val() === 'CANCELLED') && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')))"
@@ -67,6 +73,14 @@
     "bookingCodeIndex": {
       ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
       "$bookingCode": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".validate": "newData.isString()"
+      }
+    },
+    "niftIdIndex": {
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      "$niftId": {
         ".read": "auth != null",
         ".write": "auth != null && (!data.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
         ".validate": "newData.isString()"

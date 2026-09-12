@@ -9,7 +9,7 @@ import {
   update,
 } from "firebase/database";
 import { db, tripPath } from "./firebase";
-import { newTicketCode } from "./codes";
+import { newTicketCode, niftIdKey } from "./codes";
 import { DEFAULT_FINANCE, DEFAULT_SETTINGS, FOUNDER_ADMIN_UID } from "./constants";
 import { Booking, PromoCode, Role, Ticket, TripFinance, TripSettings } from "./types";
 
@@ -129,9 +129,22 @@ export async function listBookings(): Promise<Booking[]> {
 }
 
 /**
- * Creates the booking and both of its indexes in one atomic multi-path
- * write, so a booking can never exist without being findable by its owner
- * or by the code on its QR.
+ * One seat per NIFT ID. Checked here for a clear error message, and enforced
+ * by the rules, which only let an unclaimed key be written - so two people
+ * submitting the same ID at the same moment cannot both get through.
+ */
+export async function isNiftIdTaken(niftId: string): Promise<boolean> {
+  const snap = await get(ref(db, tripPath("niftIdIndex", niftIdKey(niftId))));
+  return snap.exists();
+}
+
+/**
+ * Creates the booking and all three of its indexes in one atomic multi-path
+ * write: a booking can never exist without being findable by its owner and
+ * by the code on its QR, and its NIFT ID is claimed in the same breath.
+ *
+ * If the ID is already claimed the whole write is rejected by the rules, so
+ * a duplicate booking cannot be half-created.
  */
 export async function createBooking(
   booking: Omit<Booking, "id">
@@ -143,6 +156,7 @@ export async function createBooking(
     [tripPath("bookings", bookingId)]: booking,
     [tripPath("bookingsByUser", booking.bookerUid, bookingId)]: true,
     [tripPath("bookingCodeIndex", booking.bookingCode)]: bookingId,
+    [tripPath("niftIdIndex", niftIdKey(booking.niftId))]: bookingId,
   });
 
   return bookingId;
