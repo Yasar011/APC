@@ -223,6 +223,14 @@
           ".validate": "newData.isString()"
         }
       },
+      "paymentShots": {
+        ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+        "$bookingId": {
+          ".read": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".write": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+          ".validate": "newData.isString() && newData.val().length <= 900000"
+        }
+      },
       "tickets": {
         ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
         ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",

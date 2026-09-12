@@ -27,7 +27,12 @@
     "cancellation, a typo), delete its key under jawaiTrip/niftIdIndex.",
     "",
     "No .indexOn entries are needed: every read here is a direct key lookup",
-    "or a whole-node read by an admin, never an orderByChild query."
+    "or a whole-node read by an admin, never an orderByChild query.",
+    "",
+    "PAYMENT SCREENSHOTS: shrunk in the browser and stored under",
+    "jawaiTrip/paymentShots/<bookingId>, not on the booking, so the admin list",
+    "can load every booking without dragging every image down with it. There is",
+    "no Firebase Storage bucket and no second rules file to set up."
   ],
   "jawaiTrip": {
     "settings": {
@@ -84,6 +89,14 @@
         ".read": "auth != null",
         ".write": "auth != null && (!data.exists() || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
         ".validate": "newData.isString()"
+      }
+    },
+    "paymentShots": {
+      ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      "$bookingId": {
+        ".read": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".write": "auth != null && (root.child('jawaiTrip/bookings').child($bookingId).child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".validate": "newData.isString() && newData.val().length <= 900000"
       }
     },
     "tickets": {

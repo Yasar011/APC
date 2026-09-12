@@ -37,6 +37,7 @@ import {
   rejectBooking,
 } from "@/lib/trip";
 import { profit, quote } from "@/lib/pricing";
+import { readScreenshot } from "@/lib/storage";
 import {
   BOOKING_STATUS_COLORS,
   BOOKING_STATUS_LABELS,
@@ -80,6 +81,7 @@ export default function AdminBookingDetailPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [finance, setFinance] = useState<TripFinance>(DEFAULT_FINANCE as TripFinance);
   const [recomputed, setRecomputed] = useState<PricingBreakdown | null>(null);
+  const [shot, setShot] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -105,6 +107,9 @@ export default function AdminBookingDetailPage() {
         ? await readPromo(found.pricing.promoCode)
         : null;
       setRecomputed(quote(tripSettings, promo));
+      // The screenshot lives outside the booking so the admin list stays
+      // light; fetch it only now that one booking is open.
+      setShot(await readScreenshot(found));
       setLoadError(null);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not load this booking.");
@@ -202,23 +207,23 @@ export default function AdminBookingDetailPage() {
           <CardBody>
             <h2 className="text-sm font-semibold text-neutral-900">Payment proof</h2>
 
-            {booking.paymentScreenshotUrl ? (
+            {shot ? (
               <>
                 <a
-                  href={booking.paymentScreenshotUrl}
+                  href={shot}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-4 block overflow-hidden rounded-lg border border-neutral-200"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={booking.paymentScreenshotUrl}
+                    src={shot}
                     alt="Payment screenshot"
                     className="max-h-[460px] w-full bg-neutral-50 object-contain"
                   />
                 </a>
                 <a
-                  href={booking.paymentScreenshotUrl}
+                  href={shot}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700 hover:underline"

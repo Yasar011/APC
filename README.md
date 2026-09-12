@@ -90,19 +90,7 @@ need it.
 > The founding uid is mirrored in `src/lib/constants.ts` as `FOUNDER_ADMIN_UID` so the UI
 > agrees with the rules. If it ever changes in the rules, change it there too.
 
-### 4. Storage (payment screenshots)
-
-Screenshots go to Firebase Storage in the same project. Paste the block from
-`storage.rules.snippet` into **Firebase Console → Storage → Rules** — same warning as
-above, merge it rather than replacing what's there. Add your admin UIDs to the
-`isJawaiAdmin()` list in that file: Storage rules cannot read the Realtime Database, so
-unlike everything else admins have to be listed there by hand.
-
-If the project is on the free Spark plan and Storage won't provision a bucket without
-billing, switch `src/lib/storage.ts` to a Cloudinary unsigned upload — it's the only file
-that touches file storage.
-
-### 5. Trip settings
+### 4. Trip settings
 
 Sign in as an admin, open `/admin`, click **Trip settings**, and fill in dates, price, total
 seats, **UPI accounts** and trip lead contact. The **Cost and profit** section there holds
@@ -177,6 +165,22 @@ If an ID refuses a payment — limit reached, app playing up — the payment pag
 different UPI ID"** button that moves them to the next active account. The switch is written
 to the booking immediately, not at submit, so if they pay and then close the tab the booking
 still records where the money actually went.
+
+### Payment screenshots
+
+They are **shrunk in the browser and written into the Realtime Database**, under
+`jawaiTrip/paymentShots/<bookingId>`. There is no Firebase Storage bucket, no second rules
+file, and nothing extra to switch on.
+
+That is a deliberate trade. Storage meant a bucket to provision and its own rules to
+publish, and when either was missing the upload didn't fail — it hung, leaving the student
+staring at a spinning button. For 89 phone screenshots the database is simply the better
+tool: a resized JPEG is well under 200 KB, so the whole trip is a few megabytes.
+
+They are kept **off the booking itself** so the admin list can load every booking without
+dragging every image down with it; only opening one booking fetches its image. Reads and
+writes are limited to the booker and admins — a UPI screenshot shows a name and often a
+balance.
 
 **Every booking stores `payeeUpiId`**, so `/admin` shows a **Payments by UPI ID** table:
 how many paid into each account and how much, with accounts flagged as active, paused, or no
