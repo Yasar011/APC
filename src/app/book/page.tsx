@@ -62,6 +62,7 @@ export default function BookPage() {
   const [checkingPromo, setCheckingPromo] = useState(false);
 
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [bookingCode, setBookingCode] = useState<string | null>(null);
   const [payee, setPayee] = useState<UpiAccount | null>(null);
   const [paymentRef, setPaymentRef] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -167,6 +168,7 @@ export default function BookPage() {
       // Spread students across the club's collection accounts, and record
       // which one this booking was sent to.
       const account = pickUpiForUser(settings, user.uid);
+      const code = newBookingCode();
       const id = await createBooking({
         bookerUid: user.uid,
         bookerName: traveller.name || displayName,
@@ -182,7 +184,7 @@ export default function BookPage() {
         payeeName: account?.payeeName ?? null,
         status: "AWAITING_PAYMENT",
         rejectionReason: null,
-        bookingCode: newBookingCode(),
+        bookingCode: code,
         verifiedBy: null,
         verifiedByName: null,
         verifiedAt: null,
@@ -190,6 +192,7 @@ export default function BookPage() {
         updatedAt: now,
       });
       setBookingId(id);
+      setBookingCode(code);
       setPayee(account);
       setStep("pay");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -392,6 +395,7 @@ export default function BookPage() {
                   settings={settings}
                   account={payee}
                   amount={pricing.total}
+                  note={bookingCode ?? undefined}
                   onSwitch={async (next) => {
                     setPayee(next);
                     if (bookingId) {

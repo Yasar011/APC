@@ -226,6 +226,7 @@ export default function BookingPage() {
               settings={settings}
               account={payee}
               amount={booking.pricing.total}
+              note={booking.bookingCode}
               onSwitch={async (next) => {
                 setPayee(next);
                 await setBookingPayee(booking.id, next.upiId, next.payeeName);

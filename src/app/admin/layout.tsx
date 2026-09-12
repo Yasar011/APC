@@ -29,7 +29,7 @@ const SCANNER_PATH = "/admin/scan";
  * hiding the UI is not what keeps anyone out.
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, canScan, role, loading, signOut } = useAuth();
+  const { user, isAdmin, canScan, role, loading, signOut, displayName } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -51,10 +51,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAdmin && !canScan) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-6">
-        <Card className="max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-[#c3d2d7] px-6">
+        <Card className="max-w-md rounded-2xl">
           <CardBody className="text-center">
-            <p className="text-sm font-medium text-neutral-900">This area is for trip admins</p>
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#16323f]">
+              <Mountain className="h-5 w-5 text-white" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-[#16323f]">
+              This area is for trip admins
+            </p>
             <p className="mt-2 text-sm text-neutral-500">
               Signed in as {user.email}
               {role ? ` (role: ${role})` : ""}. Access uses APC&apos;s shared roles, the same
@@ -83,24 +88,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const visibleNav = isAdmin ? NAV : NAV.filter((item) => item.href === SCANNER_PATH);
+
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="no-print border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/admin" className="flex items-center gap-2 text-sm font-semibold">
-            <Mountain className="h-5 w-5 text-amber-500" />
-            Jawai admin
-          </Link>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
-        </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">
-          {(isAdmin ? NAV : NAV.filter((item) => item.href === SCANNER_PATH)).map((item) => {
+    <div className="min-h-screen bg-[#c3d2d7] px-3 py-4 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-[26px] bg-white shadow-[0_20px_70px_rgba(15,35,45,0.18)]">
+        {/* ---------------------------------------------------- top bar */}
+        <header className="no-print bg-[#16323f] px-5 py-4 text-white sm:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <Link href="/admin" className="flex items-center gap-2">
+              <Mountain className="h-5 w-5 text-amber-400" />
+              <span className="text-base font-bold tracking-tight">
+                APC
+                <span className="font-light text-white/40">/</span>
+                <span className="text-amber-400">jawai</span>
+              </span>
+              <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/70">
+                {isAdmin ? "Admin" : "Staff"}
+              </span>
+            </Link>
+
+            <div className="flex items-center gap-3">
+              <span className="hidden text-sm text-white/60 sm:block">{displayName}</span>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* ------------------------------------------------------- tabs */}
+        <nav className="no-print flex gap-1 overflow-x-auto border-b border-neutral-200 px-3 py-2 sm:px-6">
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             const active =
               item.href === "/admin"
@@ -111,10 +134,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors",
                   active
-                    ? "bg-amber-100 text-amber-900"
-                    : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                    ? "bg-[#16323f] text-white"
+                    : "text-neutral-600 hover:bg-neutral-100 hover:text-[#16323f]"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -122,9 +145,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
             );
           })}
+
+          <Link
+            href="/"
+            className="ml-auto hidden items-center whitespace-nowrap rounded-full px-4 py-2 text-sm text-neutral-400 transition-colors hover:text-[#16323f] sm:flex"
+          >
+            View trip page
+          </Link>
         </nav>
-      </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+
+        <main className="px-5 py-7 sm:px-8 sm:py-9">{children}</main>
+      </div>
     </div>
   );
 }

@@ -166,6 +166,13 @@ free, spreads evenly (89 students over 3 IDs lands about 29 / 33 / 27), and is *
 the same student always sees the same ID, so refreshing mid-transfer doesn't move the target
 under them.
 
+**The payment QR generates itself.** Rather than uploading a QR image per account, the page
+builds a standard `upi://pay?pa=…&am=…&tn=…` link from the UPI ID and renders it as a QR —
+so the **exact amount is already filled in** when the student scans, and the **booking code
+travels into the payer's statement**, which is what makes reconciling 89 payments bearable.
+On a phone there's also a button that opens a UPI app directly. Pasting a QR image URL in
+Trip settings still overrides the generated one if you'd rather use your own.
+
 If an ID refuses a payment — limit reached, app playing up — the payment page has a **"Use a
 different UPI ID"** button that moves them to the next active account. The switch is written
 to the booking immediately, not at submit, so if they pay and then close the tab the booking

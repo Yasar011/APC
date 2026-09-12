@@ -122,12 +122,14 @@ export default function AdminBookingsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Bookings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#16323f]">Bookings</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            {pendingCount} waiting for verification
+            {pendingCount === 0
+              ? "Nothing waiting for verification."
+              : `${pendingCount} waiting for verification.`}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+        <Button variant="secondary" size="md" onClick={() => setSettingsOpen(true)}>
           <Settings2 className="h-4 w-4" />
           Trip settings
         </Button>
@@ -138,10 +140,10 @@ export default function AdminBookingsPage() {
         <Stat label="Waiting to verify" value={String(pendingCount)} />
       </div>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardBody>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold text-neutral-900">Money</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-[#16323f]">Money</h2>
             <p className="text-xs text-neutral-500">
               Confirmed bookings only &middot; {rupees(finance.baseCostPerPerson)} of every{" "}
               {rupees(settings.pricePerPerson)} seat is trip cost
@@ -172,11 +174,11 @@ export default function AdminBookingsPage() {
         </CardBody>
       </Card>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardBody>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-neutral-900">
-              <Wallet className="h-4 w-4 text-neutral-400" />
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[#16323f]">
+              <Wallet className="h-4 w-4 text-amber-600" />
               Payments by UPI ID
             </h2>
             <p className="text-xs text-neutral-500">
@@ -248,15 +250,15 @@ export default function AdminBookingsPage() {
           <button
             key={item.key}
             onClick={() => setFilter(item.key)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
               filter === item.key
-                ? "bg-neutral-900 text-white"
+                ? "bg-[#16323f] text-white"
                 : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
             }`}
           >
             {item.label}
             {item.key === "PENDING_VERIFICATION" && pendingCount > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 text-[10px] text-neutral-950">
+              <span className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-neutral-950">
                 {pendingCount}
               </span>
             )}
@@ -271,10 +273,10 @@ export default function AdminBookingsPage() {
           description="No bookings match this filter yet."
         />
       ) : (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden rounded-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wider text-neutral-500">
+              <thead className="bg-[#eef1f3] text-left text-xs uppercase tracking-wider text-neutral-500">
                 <tr>
                   <th className="px-4 py-3">Booking</th>
                   <th className="px-4 py-3">Booker</th>
@@ -308,7 +310,7 @@ export default function AdminBookingsPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/admin/bookings/${booking.id}`}
-                        className="text-xs font-medium text-amber-700 hover:underline"
+                        className="inline-flex items-center rounded-full bg-[#16323f] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#0f242e]"
                       >
                         Open
                       </Link>
@@ -348,13 +350,13 @@ function Money({
   hint?: string;
 }) {
   const tones = {
-    neutral: "text-neutral-900",
+    neutral: "text-[#16323f]",
     good: "text-emerald-700",
     bad: "text-red-700",
   } as const;
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-4">
+    <div className="rounded-xl border border-neutral-200 p-4">
       <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
       <p className={`mt-1 text-2xl font-semibold tabular-nums ${tones[tone]}`}>
         {rupees(value)}
@@ -366,12 +368,10 @@ function Money({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <Card>
-      <CardBody className="py-4">
-        <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums text-neutral-900">{value}</p>
-      </CardBody>
-    </Card>
+    <div className="rounded-2xl bg-[#eef1f3] p-5">
+      <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
+      <p className="mt-1.5 text-3xl font-semibold tabular-nums text-[#16323f]">{value}</p>
+    </div>
   );
 }
 
@@ -548,7 +548,10 @@ function SettingsModal({
                     />
                   </Field>
                   <div className="sm:col-span-2">
-                    <Field label="QR image URL" hint="Optional.">
+                    <Field
+                      label="QR image URL"
+                      hint="Optional — leave blank and a UPI QR is generated with the exact amount already in it."
+                    >
                       <Input
                         value={account.qrUrl ?? ""}
                         onChange={(e) =>

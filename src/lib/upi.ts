@@ -94,3 +94,30 @@ export function findUpiAccount(
 export function newUpiAccountId() {
   return `upi_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
+
+/**
+ * A standard UPI payment link: `upi://pay?pa=...&am=...`.
+ *
+ * Rendering this as a QR means the club never has to upload a QR image per
+ * account, and — more usefully — the **amount and a note are baked in**, so
+ * the student cannot fat-finger the figure and the booking code lands in
+ * the payer's statement, which is what makes reconciling 89 payments
+ * bearable.
+ *
+ * Built by hand rather than with URLSearchParams, which encodes spaces as
+ * "+" — several UPI apps then show the payee name with plus signs in it.
+ */
+export function upiPayUri(
+  account: Pick<UpiAccount, "upiId" | "payeeName">,
+  amount: number,
+  note?: string
+) {
+  const params = [
+    `pa=${encodeURIComponent(account.upiId)}`,
+    `pn=${encodeURIComponent(account.payeeName || "APC Club")}`,
+    `cu=INR`,
+  ];
+  if (amount > 0) params.push(`am=${amount.toFixed(2)}`);
+  if (note) params.push(`tn=${encodeURIComponent(note)}`);
+  return `upi://pay?${params.join("&")}`;
+}

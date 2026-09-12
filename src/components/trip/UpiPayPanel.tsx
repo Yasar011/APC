@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/primitives";
-import { activeUpiAccounts, nextUpiAccount } from "@/lib/upi";
+import { activeUpiAccounts, nextUpiAccount, upiPayUri } from "@/lib/upi";
+import { qrDataUrl } from "@/lib/qr";
 import { TripSettings, UpiAccount } from "@/lib/types";
 import { rupees } from "@/lib/utils";
 
@@ -21,15 +22,37 @@ export function UpiPayPanel({
   settings,
   account,
   amount,
+  note,
   onSwitch,
 }: {
   settings: TripSettings;
   account: UpiAccount | null;
   amount: number;
+  /** Shown in the payer's statement — the booking code, so it reconciles. */
+  note?: string;
   onSwitch: (next: UpiAccount) => void | Promise<void>;
 }) {
   const [switching, setSwitching] = useState(false);
+  const [qr, setQr] = useState<string | null>(null);
   const accounts = activeUpiAccounts(settings);
+
+  const payUri = account ? upiPayUri(account, amount, note) : null;
+
+  // The QR is generated from the payment link rather than uploaded, so the
+  // amount is always right and there is no image to keep in sync.
+  useEffect(() => {
+    if (!payUri) {
+      setQr(null);
+      return;
+    }
+    let active = true;
+    qrDataUrl(payUri, 260)
+      .then((url) => active && setQr(url))
+      .catch(() => active && setQr(null));
+    return () => {
+      active = false;
+    };
+  }, [payUri]);
 
   if (!account) {
     return (
@@ -86,13 +109,31 @@ export function UpiPayPanel({
         )}
       </div>
 
-      {account.qrUrl && (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={account.qrUrl}
-          alt={`UPI QR code for ${account.upiId}`}
-          className="mx-auto h-56 w-56 rounded-xl border border-neutral-200 bg-white object-contain p-2"
-        />
+      {/* A pasted image wins if one is set, otherwise the generated QR. */}
+      {(account.qrUrl || qr) && (
+        <div className="flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={account.qrUrl || qr || ""}
+            alt={`UPI QR code for ${account.upiId}`}
+            className="h-56 w-56 rounded-xl border border-neutral-200 bg-white object-contain p-2"
+          />
+          {!account.qrUrl && (
+            <p className="mt-2 text-center text-xs text-neutral-500">
+              Scan with any UPI app — the amount is already filled in.
+            </p>
+          )}
+        </div>
+      )}
+
+      {payUri && (
+        <a
+          href={payUri}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#16323f] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0f242e] sm:hidden"
+        >
+          <Smartphone className="h-4 w-4" />
+          Open a UPI app to pay
+        </a>
       )}
 
       <p className="flex items-start gap-2 text-xs text-neutral-500">
