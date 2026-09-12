@@ -51,6 +51,9 @@ export interface TripSettings {
   /** e.g. "APC President" - shown next to the name. */
   contactRole: string;
   contactPhone: string;
+  /** Invite link for the trip group. Only ever shown to a confirmed
+   *  student, so the group stays people who have actually paid. */
+  whatsappGroupUrl: string;
   pickupPoint: string;
   departureTime: string;
   updatedAt: number;

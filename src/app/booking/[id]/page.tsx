@@ -8,6 +8,7 @@ import {
   CircleAlert,
   Clock,
   LogOut,
+  MessageCircle,
   Mountain,
   Printer,
   Upload,
@@ -226,6 +227,30 @@ export default function BookingPage() {
               <TicketCard key={ticket.ticketCode} ticket={ticket} />
             ))}
           </div>
+
+          {/* The invite is shown only here, on a confirmed booking, so the
+              group stays people who have actually paid. */}
+          {settings.whatsappGroupUrl && (
+            <a
+              href={settings.whatsappGroupUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="no-print mt-6 flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 transition hover:border-emerald-300 hover:bg-emerald-100"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                <MessageCircle className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold text-emerald-900">
+                  Join the trip WhatsApp group
+                </span>
+                <span className="mt-0.5 block text-xs text-emerald-800">
+                  Every update about the day goes out there. Please join before
+                  we leave.
+                </span>
+              </span>
+            </a>
+          )}
         </>
       )}
 

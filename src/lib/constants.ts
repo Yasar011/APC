@@ -54,6 +54,7 @@ export const DEFAULT_SETTINGS = {
   contactName: "Yasar CH",
   contactRole: "APC President",
   contactPhone: "8157980825",
+  whatsappGroupUrl: "",
   pickupPoint: "Jodhpur",
   departureTime: "8:00 AM",
   updatedAt: 0,

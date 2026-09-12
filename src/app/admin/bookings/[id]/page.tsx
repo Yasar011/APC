@@ -9,6 +9,8 @@ import {
   CircleAlert,
   Droplet,
   ExternalLink,
+  Mail,
+  MessageCircle,
   Phone,
   ShieldAlert,
   X,
@@ -42,8 +44,15 @@ import {
   BOOKING_STATUS_COLORS,
   BOOKING_STATUS_LABELS,
   DEFAULT_FINANCE,
+  DEFAULT_SETTINGS,
 } from "@/lib/constants";
-import { Booking, PricingBreakdown, TripFinance } from "@/lib/types";
+import { sendConfirmationEmail, whatsappConfirmationHref } from "@/lib/notify";
+import {
+  Booking,
+  PricingBreakdown,
+  TripFinance,
+  TripSettings,
+} from "@/lib/types";
 import { formatDateTime, rupees } from "@/lib/utils";
 
 /**
@@ -80,6 +89,10 @@ export default function AdminBookingDetailPage() {
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [finance, setFinance] = useState<TripFinance>(DEFAULT_FINANCE as TripFinance);
+  const [settings, setSettings] = useState<TripSettings>(
+    DEFAULT_SETTINGS as TripSettings
+  );
+  const [emailing, setEmailing] = useState(false);
   const [recomputed, setRecomputed] = useState<PricingBreakdown | null>(null);
   const [shot, setShot] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +110,7 @@ export default function AdminBookingDetailPage() {
         readFinance(),
       ]);
       setFinance(tripFinance);
+      setSettings(tripSettings);
       if (!found) {
         setLoadError("That booking doesn't exist.");
         return;
@@ -131,10 +145,33 @@ export default function AdminBookingDetailPage() {
         `Confirmed — ${tickets.length} ${tickets.length === 1 ? "ticket" : "tickets"} issued.`
       );
       await load();
+      // The seat is booked either way. A mail server that is down, or not
+      // set up at all, must not make a confirmed booking look like it
+      // failed - so this is reported separately and can be retried below.
+      void emailStudent({ quiet: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not confirm this booking.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function emailStudent({ quiet = false } = {}) {
+    if (!booking) return;
+    setEmailing(true);
+    try {
+      const to = await sendConfirmationEmail(booking.id);
+      toast.success(`Confirmation emailed to ${to}`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not send the email.";
+      if (quiet) {
+        toast.warning(`Confirmed, but the email didn't go out: ${message}`);
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setEmailing(false);
     }
   }
 
@@ -175,6 +212,7 @@ export default function AdminBookingDetailPage() {
   const differsFromToday = recomputed && recomputed.total !== booking.pricing.total;
   const canDecide =
     booking.status === "PENDING_VERIFICATION" || booking.status === "AWAITING_PAYMENT";
+  const whatsappHrefForBooking = whatsappConfirmationHref(booking, settings);
 
   return (
     <div className="space-y-6">
@@ -351,6 +389,40 @@ export default function AdminBookingDetailPage() {
                   <p className="text-center text-xs text-neutral-500">
                     Nothing to verify yet — the student hasn&apos;t uploaded a screenshot.
                   </p>
+                )}
+              </CardBody>
+            </Card>
+          )}
+
+          {booking.status === "CONFIRMED" && (
+            <Card>
+              <CardBody className="space-y-3">
+                <h2 className="text-sm font-semibold text-neutral-900">
+                  Tell them
+                </h2>
+                <p className="text-xs text-neutral-500">
+                  The email goes out automatically when you confirm. Send it again
+                  here if it bounced, or message them directly.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => emailStudent()}
+                  loading={emailing}
+                >
+                  <Mail className="h-4 w-4" />
+                  Email the confirmation again
+                </Button>
+                {whatsappHrefForBooking && (
+                  <a
+                    href={whatsappHrefForBooking}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50"
+                  >
+                    <MessageCircle className="h-4 w-4 text-emerald-600" />
+                    Send it on WhatsApp
+                  </a>
                 )}
               </CardBody>
             </Card>

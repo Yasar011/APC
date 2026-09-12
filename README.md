@@ -205,6 +205,74 @@ Pausing an account stops new students being sent to it but leaves every past boo
 record intact — which is the point of keeping the ID on the booking rather than looking it
 up from settings later.
 
+### Confirmation email
+
+When an admin confirms a payment, the student is **emailed automatically** — booking
+code, amount paid, departure and pickup, their ticket code, and the WhatsApp group link.
+
+It goes out over the **club's own Gmail** with an App Password, not through a transactional
+provider. Providers won't mail anyone but you until you've verified a sending domain, which
+the club doesn't have; Gmail sends from the address students already recognise and allows
+500 a day, which 89 seats fits inside several times over.
+
+```
+GMAIL_USER=                 # the club's gmail address
+GMAIL_APP_PASSWORD=         # 16 characters from myaccount.google.com/apppasswords
+```
+
+That is an **App Password**, not the account password — turn on 2-Step Verification first or
+the page won't offer you one.
+
+**Without them, confirming still works.** The booking is confirmed and the ticket is issued
+exactly as before; the email just doesn't go out, and the admin sends the same message on
+**WhatsApp** from the booking page instead — one tap, already written, to the number on the
+booking. That button is always there, whether email is set up or not.
+
+Two things make the endpoint safe without a Firebase Admin SDK:
+
+- it reads the booking **as the caller**, using their own ID token against the Realtime
+  Database REST API, so the rules already published do the authorising — no second copy of
+  the admin check to drift out of step;
+- the recipient is the address **stored on the booking** and the status is read **from the
+  database**, so nobody can mail a stranger or conjure a confirmation for a booking no admin
+  has verified.
+
+### WhatsApp group
+
+Paste the group invite link into **Trip settings → Trip WhatsApp group**. It then appears:
+
+- on the student's booking page, **only once their payment is verified**
+- in their confirmation email
+- in the WhatsApp message the admin sends
+
+so the group is people who have actually paid.
+
+> The link is stored in `jawaiTrip/settings`, which is world-readable — the public page needs
+> the price and dates from the same node. The app only *shows* it to confirmed students, but
+> anyone who reads the database directly could find it. Treat it as "not advertised" rather
+> than secret, and rely on the group's own admission settings the way you would with any
+> invite link that gets forwarded.
+
+### Spreadsheets
+
+**Export to Sheets** on `/admin` and `/admin/roster` downloads a CSV. Drop it on Google
+Drive, or **File → Import** in a sheet, and it opens straight up — it works in Excel and
+Numbers too.
+
+- `/admin` exports **every booking**, including the promo, which UPI ID it was paid into,
+  and the cost/profit split. That last part is why the export is built on an admin page: the
+  margin isn't stored on the booking, it's worked out from the admin-only finance node.
+- `/admin/roster` exports the **manifest** — blood groups, conditions, allergies,
+  medications and emergency contacts.
+
+A file rather than a live Google Sheets sync on purpose: a sync needs a service account, a
+shared sheet and a set of credentials that can each go wrong, and this app has been held up
+by missing setup more than once. A download needs nothing, and it's still a snapshot the
+club has in hand if the database is unreachable on trip day.
+
+Cells beginning `=`, `+`, `-` or `@` are quoted before export, so a name or NIFT ID typed by
+a student is never handed to a spreadsheet's formula engine.
+
 ### Booking flow
 
 ```
@@ -246,7 +314,7 @@ Everything under `jawaiTrip`:
 
 | Key | What's in it |
 |---|---|
-| `settings` | Price, dates, seats, UPI accounts, trip lead contact. World-readable. |
+| `settings` | Price, dates, seats, UPI accounts, trip lead contact, WhatsApp group link. World-readable. |
 | `finance` | What a seat costs the club. **Admin-only** — never world-readable. |
 | `bookings/$id` | Booker, travellers, pricing breakdown, payment proof, status. |
 | `bookingsByUser/$uid/$id` | "Does this person already have a booking?" |
@@ -278,6 +346,7 @@ an admin, never an `orderByChild` query.
 | `/admin/promos` | Admins | Promo codes |
 | `/admin/roster` | Admins | Printable manifest |
 | `/admin/scan` | Admins | Bus check-in |
+| `/api/email/confirmation` | Admins & the booker | Sends the confirmation email |
 
 ---
 

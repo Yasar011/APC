@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CircleAlert, Inbox, Plus, Settings2, Trash2, Wallet } from "lucide-react";
+import {
+  CircleAlert,
+  Inbox,
+  Plus,
+  Settings2,
+  Sheet,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Badge,
@@ -27,6 +35,85 @@ import {
 } from "@/lib/constants";
 import { Booking, BookingStatus, TripFinance, TripSettings, UpiAccount } from "@/lib/types";
 import { formatDateTime, rupees } from "@/lib/utils";
+import { downloadCsv, stampedFileName, toCsv } from "@/lib/csv";
+
+/**
+ * Every booking as a spreadsheet.
+ *
+ * Includes the cost and profit columns, which is the reason it is built
+ * here on an admin page rather than anywhere a student could reach: the
+ * margin is not in the booking, it is worked out from the finance node.
+ */
+function bookingsCsv(bookings: Booking[], finance: TripFinance): string {
+  const headers = [
+    "Booking code",
+    "Status",
+    "Name",
+    "NIFT ID",
+    "Phone",
+    "Email",
+    "Programme",
+    "Semester",
+    "Age",
+    "Gender",
+    "Blood group",
+    "Medical conditions",
+    "Allergies",
+    "Medications",
+    "Emergency contact",
+    "Emergency phone",
+    "Relation",
+    "Price",
+    "Promo code",
+    "Discount",
+    "Paid",
+    "Paid to UPI",
+    "Payee name",
+    "Trip cost",
+    "Club keeps",
+    "Booked at",
+    "Verified at",
+    "Verified by",
+  ];
+
+  const rows = bookings.map((booking) => {
+    const traveller = booking.travellers[0];
+    const split = profit(booking.pricing, finance);
+    return [
+      booking.bookingCode,
+      BOOKING_STATUS_LABELS[booking.status] ?? booking.status,
+      traveller?.name ?? booking.bookerName,
+      booking.niftId,
+      traveller?.phone ?? booking.bookerPhone,
+      booking.bookerEmail,
+      traveller?.programme ?? "",
+      traveller?.semester ?? "",
+      traveller?.age ?? "",
+      traveller?.gender ?? "",
+      traveller?.bloodGroup ?? "",
+      traveller?.medicalConditions ?? "",
+      traveller?.allergies ?? "",
+      traveller?.medications ?? "",
+      traveller?.emergencyContactName ?? "",
+      traveller?.emergencyContactPhone ?? "",
+      traveller?.emergencyContactRelation ?? "",
+      booking.pricing.subtotal,
+      booking.pricing.promoCode ?? "",
+      booking.pricing.discount,
+      booking.pricing.total,
+      booking.payeeUpiId ?? "",
+      booking.payeeName ?? "",
+      // Cost and margin only mean anything once the money is in.
+      booking.status === "CONFIRMED" ? split.cost : "",
+      booking.status === "CONFIRMED" ? split.netProfit : "",
+      formatDateTime(booking.createdAt),
+      booking.verifiedAt ? formatDateTime(booking.verifiedAt) : "",
+      booking.verifiedByName ?? "",
+    ];
+  });
+
+  return toCsv(headers, rows);
+}
 
 const FILTERS: { key: BookingStatus | "ALL"; label: string }[] = [
   { key: "PENDING_VERIFICATION", label: "To verify" },
@@ -129,10 +216,27 @@ export default function AdminBookingsPage() {
               : `${pendingCount} waiting for verification.`}
           </p>
         </div>
-        <Button variant="secondary" size="md" onClick={() => setSettingsOpen(true)}>
-          <Settings2 className="h-4 w-4" />
-          Trip settings
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="md"
+            disabled={bookings.length === 0}
+            onClick={() =>
+              downloadCsv(
+                stampedFileName("jawai-bookings"),
+                bookingsCsv(bookings, finance)
+              )
+            }
+            title="Opens in Google Sheets, Excel or Numbers"
+          >
+            <Sheet className="h-4 w-4" />
+            Export to Sheets
+          </Button>
+          <Button variant="secondary" size="md" onClick={() => setSettingsOpen(true)}>
+            <Settings2 className="h-4 w-4" />
+            Trip settings
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -611,6 +715,16 @@ function SettingsModal({
           <Input
             value={form.contactPhone}
             onChange={(e) => set("contactPhone", e.target.value)}
+          />
+        </Field>
+        <Field
+          label="Trip WhatsApp group"
+          hint="Paste the group invite link. Only shown to students whose payment is verified, and included in their confirmation email."
+        >
+          <Input
+            value={form.whatsappGroupUrl ?? ""}
+            onChange={(e) => set("whatsappGroupUrl", e.target.value)}
+            placeholder="https://chat.whatsapp.com/..."
           />
         </Field>
         <Field label="Pickup point">

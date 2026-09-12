@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CircleAlert, Printer, Users } from "lucide-react";
+import { CircleAlert, Printer, Sheet, Users } from "lucide-react";
 import {
   Button,
   Card,
@@ -13,11 +13,52 @@ import { listBookings, readSettings } from "@/lib/trip";
 import { DEFAULT_SETTINGS } from "@/lib/constants";
 import { Traveller, TripSettings } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { downloadCsv, stampedFileName, toCsv } from "@/lib/csv";
 
 interface RosterRow extends Traveller {
   bookingCode: string;
   bookerName: string;
   bookerPhone: string;
+}
+
+/** The same manifest as a spreadsheet, for anyone who'd rather have it there. */
+function rosterCsv(rows: RosterRow[]): string {
+  return toCsv(
+    [
+      "Booking code",
+      "Name",
+      "NIFT ID",
+      "Phone",
+      "Programme",
+      "Semester",
+      "Age",
+      "Gender",
+      "Blood group",
+      "Medical conditions",
+      "Allergies",
+      "Medications",
+      "Emergency contact",
+      "Emergency phone",
+      "Relation",
+    ],
+    rows.map((row) => [
+      row.bookingCode,
+      row.name,
+      row.niftId,
+      row.phone,
+      row.programme,
+      row.semester,
+      row.age,
+      row.gender,
+      row.bloodGroup,
+      row.medicalConditions,
+      row.allergies,
+      row.medications,
+      row.emergencyContactName,
+      row.emergencyContactPhone,
+      row.emergencyContactRelation,
+    ])
+  );
 }
 
 /**
@@ -104,10 +145,21 @@ export default function RosterPage() {
             {rows.length} confirmed travellers. Print this and carry it on the bus.
           </p>
         </div>
-        <Button onClick={() => window.print()}>
-          <Printer className="h-4 w-4" />
-          Print
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            disabled={rows.length === 0}
+            onClick={() => downloadCsv(stampedFileName("jawai-roster"), rosterCsv(rows))}
+            title="Opens in Google Sheets, Excel or Numbers"
+          >
+            <Sheet className="h-4 w-4" />
+            Export to Sheets
+          </Button>
+          <Button onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+        </div>
       </div>
 
       <div className="print-tight rounded-xl border border-neutral-200 bg-white p-6">
