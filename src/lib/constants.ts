@@ -1,4 +1,4 @@
-import { BookingStatus } from "./types";
+import { BookingStatus, UpiAccount } from "./types";
 
 /**
  * APC's founding admin, mirrored from the database rules, which grant this
@@ -50,9 +50,7 @@ export const DEFAULT_SETTINGS = {
   totalSeats: 89,
   seatsBooked: 0,
   bookingsOpen: true,
-  upiId: "",
-  upiPayeeName: "APC Club",
-  paymentQrUrl: null,
+  upiAccounts: [] as UpiAccount[],
   contactName: "",
   contactPhone: "",
   pickupPoint: "NIFT Jodhpur main gate",

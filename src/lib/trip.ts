@@ -162,6 +162,23 @@ export async function createBooking(
   return bookingId;
 }
 
+/**
+ * Records which of the club's UPI IDs the student is actually paying into,
+ * written as soon as they switch rather than at submit - if they pay and
+ * then close the tab, the booking still says where the money went.
+ */
+export async function setBookingPayee(
+  bookingId: string,
+  payeeUpiId: string,
+  payeeName: string
+) {
+  await update(ref(db, tripPath("bookings", bookingId)), {
+    payeeUpiId,
+    payeeName,
+    updatedAt: Date.now(),
+  });
+}
+
 /** Student attaches proof of payment and hands the booking to an admin. */
 export async function attachPayment(
   bookingId: string,

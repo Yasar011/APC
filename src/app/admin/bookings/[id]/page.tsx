@@ -233,12 +233,32 @@ export default function AdminBookingDetailPage() {
               </p>
             )}
 
-            {booking.paymentRef && (
-              <p className="mt-4 text-sm">
-                <span className="text-neutral-500">UPI reference:</span>{" "}
-                <span className="font-mono text-neutral-900">{booking.paymentRef}</span>
-              </p>
-            )}
+            <dl className="mt-4 space-y-1.5 text-sm">
+              {booking.paymentRef && (
+                <div className="flex gap-2">
+                  <dt className="text-neutral-500">UPI reference</dt>
+                  <dd className="font-mono text-neutral-900">{booking.paymentRef}</dd>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <dt className="text-neutral-500">Paid into</dt>
+                <dd className="font-mono text-neutral-900">
+                  {booking.payeeUpiId ?? "not recorded"}
+                  {booking.payeeName ? (
+                    <span className="ml-1 font-sans text-neutral-500">
+                      ({booking.payeeName})
+                    </span>
+                  ) : null}
+                </dd>
+              </div>
+            </dl>
+
+            <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+              Check the screenshot shows money arriving at{" "}
+              <span className="font-mono">{booking.payeeUpiId ?? "one of the club's UPI IDs"}</span>
+              . A payment to a different account is still real money, but it won&apos;t
+              reconcile against this one.
+            </p>
           </CardBody>
         </Card>
 

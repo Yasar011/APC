@@ -9,16 +9,15 @@ import {
   BadgeIndianRupee,
   Check,
   CircleAlert,
-  Copy,
   Loader2,
   Mountain,
-  Smartphone,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { TravellerForm, emptyTraveller } from "@/components/trip/TravellerForm";
 import { PriceBreakdown } from "@/components/trip/PriceBreakdown";
+import { UpiPayPanel } from "@/components/trip/UpiPayPanel";
 import {
   Button,
   Card,
@@ -36,10 +35,12 @@ import {
   readMyBooking,
   readPromo,
   readSettings,
+  setBookingPayee,
 } from "@/lib/trip";
+import { pickUpiForUser } from "@/lib/upi";
 import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { DEFAULT_SETTINGS } from "@/lib/constants";
-import { PromoCode, Traveller, TripSettings } from "@/lib/types";
+import { PromoCode, Traveller, TripSettings, UpiAccount } from "@/lib/types";
 import { rupees } from "@/lib/utils";
 
 type Step = "details" | "review" | "pay";
@@ -61,6 +62,7 @@ export default function BookPage() {
   const [checkingPromo, setCheckingPromo] = useState(false);
 
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [payee, setPayee] = useState<UpiAccount | null>(null);
   const [paymentRef, setPaymentRef] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -162,6 +164,9 @@ export default function BookPage() {
     setSaving(true);
     try {
       const now = Date.now();
+      // Spread students across the club's collection accounts, and record
+      // which one this booking was sent to.
+      const account = pickUpiForUser(settings, user.uid);
       const id = await createBooking({
         bookerUid: user.uid,
         bookerName: traveller.name || displayName,
@@ -173,6 +178,8 @@ export default function BookPage() {
         pricing,
         paymentScreenshotUrl: null,
         paymentRef: "",
+        payeeUpiId: account?.upiId ?? null,
+        payeeName: account?.payeeName ?? null,
         status: "AWAITING_PAYMENT",
         rejectionReason: null,
         bookingCode: newBookingCode(),
@@ -183,6 +190,7 @@ export default function BookPage() {
         updatedAt: now,
       });
       setBookingId(id);
+      setPayee(account);
       setStep("pay");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -379,56 +387,19 @@ export default function BookPage() {
                 Pay {rupees(pricing.total)}
               </div>
 
-              {settings.upiId ? (
-                <div className="mt-5 space-y-4">
-                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-                    <p className="text-xs uppercase tracking-wider text-neutral-500">
-                      UPI ID
-                    </p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <code className="text-sm font-semibold text-neutral-900">
-                        {settings.upiId}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(settings.upiId);
-                          toast.success("UPI ID copied");
-                        }}
-                        className="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
-                        aria-label="Copy UPI ID"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    {settings.upiPayeeName && (
-                      <p className="mt-1 text-xs text-neutral-500">
-                        Payee: {settings.upiPayeeName}
-                      </p>
-                    )}
-                  </div>
-
-                  {settings.paymentQrUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={settings.paymentQrUrl}
-                      alt="UPI payment QR code"
-                      className="mx-auto h-56 w-56 rounded-xl border border-neutral-200 bg-white object-contain p-2"
-                    />
-                  )}
-
-                  <p className="flex items-start gap-2 text-xs text-neutral-500">
-                    <Smartphone className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    Pay the exact amount, then upload the screenshot below. An admin checks
-                    it and your ticket appears on your booking page.
-                  </p>
-                </div>
-              ) : (
-                <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Payment details haven&apos;t been set up yet. Message the trip leads
-                  {settings.contactPhone ? ` on ${settings.contactPhone}` : ""} before paying.
-                </p>
-              )}
+              <div className="mt-5">
+                <UpiPayPanel
+                  settings={settings}
+                  account={payee}
+                  amount={pricing.total}
+                  onSwitch={async (next) => {
+                    setPayee(next);
+                    if (bookingId) {
+                      await setBookingPayee(bookingId, next.upiId, next.payeeName);
+                    }
+                  }}
+                />
+              </div>
             </CardBody>
           </Card>
 

@@ -12,6 +12,21 @@ export type DiscountKind = "NONE" | "PROMO";
 
 export type PromoType = "FLAT" | "PERCENT";
 
+/**
+ * One of the club's collection accounts. Several exist because a single
+ * personal UPI ID hits receiving limits well before a full bus has paid.
+ */
+export interface UpiAccount {
+  /** Stable key, so renaming the UPI ID doesn't orphan past bookings. */
+  id: string;
+  upiId: string;
+  payeeName: string;
+  /** Optional payment QR image for this account. */
+  qrUrl: string | null;
+  /** Paused accounts stay on old bookings but are handed to nobody new. */
+  active: boolean;
+}
+
 export interface TripSettings {
   tripName: string;
   tagline: string;
@@ -23,9 +38,15 @@ export interface TripSettings {
   totalSeats: number;
   seatsBooked: number;
   bookingsOpen: boolean;
-  upiId: string;
-  upiPayeeName: string;
-  paymentQrUrl: string | null;
+  /** Students are spread across these. See src/lib/upi.ts. */
+  upiAccounts: UpiAccount[];
+  /** @deprecated Single-account settings from before there were several.
+   *  Still read as a fallback so old settings keep working. */
+  upiId?: string;
+  /** @deprecated See upiId. */
+  upiPayeeName?: string;
+  /** @deprecated See upiId. */
+  paymentQrUrl?: string | null;
   contactName: string;
   contactPhone: string;
   pickupPoint: string;
@@ -104,6 +125,9 @@ export interface Booking {
   pricing: PricingBreakdown;
   paymentScreenshotUrl: string | null;
   paymentRef: string;
+  /** Which of the club's UPI IDs this student was told to pay into. */
+  payeeUpiId: string | null;
+  payeeName: string | null;
   status: BookingStatus;
   rejectionReason: string | null;
   bookingCode: string;

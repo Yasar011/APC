@@ -98,9 +98,9 @@ that touches file storage.
 
 ### 5. Trip settings
 
-Sign in as an admin, open `/admin`, click **Trip settings**, and fill in dates, price, UPI
-ID, total seats and trip lead contact. The **Cost and profit** section there holds the
-admin-only ₹2000 figure. The public page reads the rest live.
+Sign in as an admin, open `/admin`, click **Trip settings**, and fill in dates, price, total
+seats, **UPI accounts** and trip lead contact. The **Cost and profit** section there holds
+the admin-only ₹2000 figure. The public page reads the rest live.
 
 ---
 
@@ -147,6 +147,33 @@ margin is never visible to a student, and never stored on a booking they can rea
 `/admin` totals collected, trip cost and profit separately across all confirmed bookings,
 and each booking shows its own split.
 
+### Collecting on several UPI IDs
+
+One personal UPI ID hits receiving limits long before 89 students have paid into it, so the
+club can list **as many UPI accounts as it likes** in Trip settings — add, rename, pause or
+remove them there.
+
+Students are **spread across the active accounts automatically**. Which one a student gets
+is decided by hashing their uid, not by a shared counter: a counter would need every browser
+to read and write shared state, and students can't read each other's bookings. Hashing is
+free, spreads evenly (89 students over 3 IDs lands about 29 / 33 / 27), and is **stable** —
+the same student always sees the same ID, so refreshing mid-transfer doesn't move the target
+under them.
+
+If an ID refuses a payment — limit reached, app playing up — the payment page has a **"Use a
+different UPI ID"** button that moves them to the next active account. The switch is written
+to the booking immediately, not at submit, so if they pay and then close the tab the booking
+still records where the money actually went.
+
+**Every booking stores `payeeUpiId`**, so `/admin` shows a **Payments by UPI ID** table:
+how many paid into each account and how much, with accounts flagged as active, paused, or no
+longer listed. Each booking's verification page names the ID to check the screenshot
+against.
+
+Pausing an account stops new students being sent to it but leaves every past booking's
+record intact — which is the point of keeping the ID on the booking rather than looking it
+up from settings later.
+
 ### Booking flow
 
 ```
@@ -188,7 +215,7 @@ Everything under `jawaiTrip`:
 
 | Key | What's in it |
 |---|---|
-| `settings` | Price, dates, seats, UPI details, trip lead contact. World-readable. |
+| `settings` | Price, dates, seats, UPI accounts, trip lead contact. World-readable. |
 | `finance` | What a seat costs the club. **Admin-only** — never world-readable. |
 | `bookings/$id` | Booker, travellers, pricing breakdown, payment proof, status. |
 | `bookingsByUser/$uid/$id` | "Does this person already have a booking?" |

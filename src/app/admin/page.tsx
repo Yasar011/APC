@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CircleAlert, Inbox, Settings2 } from "lucide-react";
+import { CircleAlert, Inbox, Plus, Settings2, Trash2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import {
   Badge,
@@ -18,13 +18,14 @@ import {
 } from "@/components/ui/primitives";
 import { listBookings, readFinance, readSettings, saveFinance, saveSettings } from "@/lib/trip";
 import { profit } from "@/lib/pricing";
+import { newUpiAccountId, upiAccounts } from "@/lib/upi";
 import {
   BOOKING_STATUS_COLORS,
   BOOKING_STATUS_LABELS,
   DEFAULT_FINANCE,
   DEFAULT_SETTINGS,
 } from "@/lib/constants";
-import { Booking, BookingStatus, TripFinance, TripSettings } from "@/lib/types";
+import { Booking, BookingStatus, TripFinance, TripSettings, UpiAccount } from "@/lib/types";
 import { formatDateTime, rupees } from "@/lib/utils";
 
 const FILTERS: { key: BookingStatus | "ALL"; label: string }[] = [
@@ -99,6 +100,24 @@ export default function AdminBookingsPage() {
   const totalDiscount = books.reduce((sum, item) => sum + item.discount, 0);
   const netProfit = books.reduce((sum, item) => sum + item.netProfit, 0);
 
+  // Which UPI ID the money actually landed on. Counted from every booking
+  // that has been paid, not just confirmed ones, so an ID that has stopped
+  // accepting payments shows up before anyone has verified them.
+  const paid = bookings.filter(
+    (item) => item.status === "PENDING_VERIFICATION" || item.status === "CONFIRMED"
+  );
+  const byUpi = new Map<string, { count: number; amount: number; name: string }>();
+  for (const item of paid) {
+    const key = item.payeeUpiId ?? "(not recorded)";
+    const entry = byUpi.get(key) ?? { count: 0, amount: 0, name: item.payeeName ?? "" };
+    entry.count += 1;
+    entry.amount += item.pricing.total;
+    if (!entry.name && item.payeeName) entry.name = item.payeeName;
+    byUpi.set(key, entry);
+  }
+  const upiRows = [...byUpi.entries()].sort((a, b) => b[1].count - a[1].count);
+  const configuredUpis = upiAccounts(settings);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -148,6 +167,77 @@ export default function AdminBookingsPage() {
             <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
               Confirmed bookings are collectively below cost. Check the promo codes —
               a discount larger than the margin is paid for by the club.
+            </p>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-neutral-900">
+              <Wallet className="h-4 w-4 text-neutral-400" />
+              Payments by UPI ID
+            </h2>
+            <p className="text-xs text-neutral-500">
+              {configuredUpis.length} account{configuredUpis.length === 1 ? "" : "s"} set up
+              &middot; students are spread across them automatically
+            </p>
+          </div>
+
+          {upiRows.length === 0 ? (
+            <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-500">
+              Nobody has paid yet.
+            </p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase tracking-wider text-neutral-500">
+                  <tr>
+                    <th className="pb-2 pr-4">UPI ID</th>
+                    <th className="pb-2 pr-4">Payments</th>
+                    <th className="pb-2 pr-4">Amount</th>
+                    <th className="pb-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {upiRows.map(([upiId, row]) => {
+                    const configured = configuredUpis.find((a) => a.upiId === upiId);
+                    return (
+                      <tr key={upiId}>
+                        <td className="py-2.5 pr-4">
+                          <p className="font-mono text-xs font-medium text-neutral-900">
+                            {upiId}
+                          </p>
+                          {row.name && (
+                            <p className="text-xs text-neutral-500">{row.name}</p>
+                          )}
+                        </td>
+                        <td className="py-2.5 pr-4 tabular-nums">{row.count}</td>
+                        <td className="py-2.5 pr-4 tabular-nums">{rupees(row.amount)}</td>
+                        <td className="py-2.5">
+                          {!configured ? (
+                            <Badge className="bg-neutral-200 text-neutral-600">
+                              No longer listed
+                            </Badge>
+                          ) : configured.active === false ? (
+                            <Badge className="bg-amber-100 text-amber-800">Paused</Badge>
+                          ) : (
+                            <Badge className="bg-emerald-100 text-emerald-800">Active</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {configuredUpis.filter((a) => a.active !== false).length === 0 && (
+            <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              No UPI account is accepting payments. Students can&apos;t pay until you add or
+              un-pause one in Trip settings.
             </p>
           )}
         </CardBody>
@@ -311,6 +401,15 @@ function SettingsModal({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateAccount(index: number, patch: Partial<UpiAccount>) {
+    setForm((current) => ({
+      ...current,
+      upiAccounts: upiAccounts(current).map((account, i) =>
+        i === index ? { ...account, ...patch } : account
+      ),
+    }));
+  }
+
   async function save() {
     setSaving(true);
     try {
@@ -379,21 +478,116 @@ function SettingsModal({
             <option value="no">Closed</option>
           </Select>
         </Field>
-        <Field label="UPI ID">
-          <Input value={form.upiId} onChange={(e) => set("upiId", e.target.value)} />
-        </Field>
-        <Field label="UPI payee name">
-          <Input
-            value={form.upiPayeeName}
-            onChange={(e) => set("upiPayeeName", e.target.value)}
-          />
-        </Field>
-        <Field label="Payment QR image URL" hint="Optional — shown on the payment step.">
-          <Input
-            value={form.paymentQrUrl ?? ""}
-            onChange={(e) => set("paymentQrUrl", e.target.value || null)}
-          />
-        </Field>
+        <div className="rounded-xl border border-neutral-200 p-4 sm:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                <Wallet className="h-3.5 w-3.5" />
+                UPI accounts
+              </p>
+              <p className="mt-1 text-xs text-neutral-500">
+                Students are spread evenly across these, so no single ID takes all 89
+                payments. Pause one to stop new students being sent to it — bookings that
+                already used it keep their record.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  upiAccounts: [
+                    ...upiAccounts(current),
+                    {
+                      id: newUpiAccountId(),
+                      upiId: "",
+                      payeeName: "",
+                      qrUrl: null,
+                      active: true,
+                    },
+                  ],
+                }))
+              }
+            >
+              <Plus className="h-4 w-4" />
+              Add UPI ID
+            </Button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {upiAccounts(form).length === 0 && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                No UPI accounts yet. Students can&apos;t pay until you add at least one.
+              </p>
+            )}
+
+            {upiAccounts(form).map((account, index) => (
+              <div
+                key={account.id}
+                className={`rounded-lg border p-3 ${
+                  account.active === false
+                    ? "border-neutral-200 bg-neutral-50 opacity-70"
+                    : "border-neutral-200"
+                }`}
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label={`UPI ID ${index + 1}`}>
+                    <Input
+                      value={account.upiId}
+                      placeholder="name@okhdfcbank"
+                      onChange={(e) => updateAccount(index, { upiId: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Payee name">
+                    <Input
+                      value={account.payeeName}
+                      placeholder="Shown to the student"
+                      onChange={(e) => updateAccount(index, { payeeName: e.target.value })}
+                    />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="QR image URL" hint="Optional.">
+                      <Input
+                        value={account.qrUrl ?? ""}
+                        onChange={(e) =>
+                          updateAccount(index, { qrUrl: e.target.value || null })
+                        }
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs text-neutral-600">
+                    <input
+                      type="checkbox"
+                      checked={account.active !== false}
+                      onChange={(e) => updateAccount(index, { active: e.target.checked })}
+                      className="h-3.5 w-3.5 accent-amber-500"
+                    />
+                    Accepting new students
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((current) => ({
+                        ...current,
+                        upiAccounts: upiAccounts(current).filter((_, i) => i !== index),
+                      }))
+                    }
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <Field label="Trip lead name">
           <Input
             value={form.contactName}

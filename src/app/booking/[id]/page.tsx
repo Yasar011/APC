@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { PriceBreakdown } from "@/components/trip/PriceBreakdown";
+import { UpiPayPanel } from "@/components/trip/UpiPayPanel";
 import { TicketCard } from "@/components/trip/TicketCard";
 import {
   Badge,
@@ -26,11 +27,18 @@ import {
   FullPageSpinner,
   Input,
 } from "@/components/ui/primitives";
-import { attachPayment, readBooking, readSettings, readTicketsForBooking } from "@/lib/trip";
+import {
+  attachPayment,
+  readBooking,
+  readSettings,
+  readTicketsForBooking,
+  setBookingPayee,
+} from "@/lib/trip";
+import { findUpiAccount, pickUpiForUser } from "@/lib/upi";
 import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, DEFAULT_SETTINGS } from "@/lib/constants";
-import { Booking, Ticket, TripSettings } from "@/lib/types";
-import { formatDateTime, rupees } from "@/lib/utils";
+import { Booking, Ticket, TripSettings, UpiAccount } from "@/lib/types";
+import { formatDateTime } from "@/lib/utils";
 
 export default function BookingPage() {
   const params = useParams<{ id: string }>();
@@ -44,6 +52,7 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const [payee, setPayee] = useState<UpiAccount | null>(null);
   const [paymentRef, setPaymentRef] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -68,6 +77,12 @@ export default function BookingPage() {
       }
       setBooking(found);
       setPaymentRef(found.paymentRef || "");
+      // Whichever account this booking was sent to. If it predates the
+      // several-accounts change, fall back to the one they'd get today.
+      setPayee(
+        findUpiAccount(tripSettings, found.payeeUpiId) ??
+          pickUpiForUser(tripSettings, found.bookerUid)
+      );
 
       if (found.status === "CONFIRMED") {
         setTickets(await readTicketsForBooking(found.id));
@@ -207,12 +222,15 @@ export default function BookingPage() {
               Upload your payment screenshot
             </h2>
 
-            {settings.upiId && (
-              <p className="rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
-                Pay {rupees(booking.pricing.total)} to{" "}
-                <span className="font-semibold">{settings.upiId}</span>
-              </p>
-            )}
+            <UpiPayPanel
+              settings={settings}
+              account={payee}
+              amount={booking.pricing.total}
+              onSwitch={async (next) => {
+                setPayee(next);
+                await setBookingPayee(booking.id, next.upiId, next.payeeName);
+              }}
+            />
 
             <Field label="UPI reference number" required>
               <Input
