@@ -168,19 +168,33 @@ still records where the money actually went.
 
 ### Payment screenshots
 
-They are **shrunk in the browser and written into the Realtime Database**, under
-`jawaiTrip/paymentShots/<bookingId>`. There is no Firebase Storage bucket, no second rules
-file, and nothing extra to switch on.
+They go to **Cloudinary**, the same way the TEDx app does: the browser asks
+`/api/cloudinary/sign` for a signature and uploads straight to Cloudinary, so the file never
+passes through the server and the API secret never reaches a page. The signed folder is
+checked against an allowlist, so a signed-in student can't have us sign an upload into a
+folder movie night uses.
 
-That is a deliberate trade. Storage meant a bucket to provision and its own rules to
-publish, and when either was missing the upload didn't fail — it hung, leaving the student
-staring at a spinning button. For 89 phone screenshots the database is simply the better
-tool: a resized JPEG is well under 200 KB, so the whole trip is a few megabytes.
+Set three variables to turn it on:
 
-They are kept **off the booking itself** so the admin list can load every booking without
-dragging every image down with it; only opening one booking fetches its image. Reads and
-writes are limited to the booker and admins — a UPI screenshot shows a name and often a
-balance.
+```
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=   # public, ends up in image URLs
+CLOUDINARY_API_KEY=                  # server only
+CLOUDINARY_API_SECRET=               # server only
+```
+
+**Without them it still works.** Screenshots fall back to being stored in the Realtime
+Database under `jawaiTrip/paymentShots/<bookingId>` — shrunk small enough that 89 of them
+are a few megabytes. This app has repeatedly been blocked by a missing piece of setup, so an
+upload that works before anything is configured is worth more than a tidier single path.
+
+Either way the image is **resized in the browser first** — a payment screenshot only has to
+be readable by a human checking an amount, and it makes the Cloudinary free tier go a long
+way across 89 of them. Database-stored ones are kept **off the booking** so the admin list
+can load every booking without dragging every image with it.
+
+It was Firebase Storage before this, which needed a bucket provisioning and its own rules
+file; when either was missing the upload didn't fail, it hung. Every network wait now has a
+timeout, so a stall surfaces as a message rather than a button that spins forever.
 
 **Every booking stores `payeeUpiId`**, so `/admin` shows a **Payments by UPI ID** table:
 how many paid into each account and how much, with accounts flagged as active, paused, or no

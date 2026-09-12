@@ -1,26 +1,26 @@
 import { get, ref, set } from "firebase/database";
 import { db, tripPath } from "./firebase";
+import { isCloudinaryConfigured, uploadToCloudinary } from "./cloudinary";
 import { Booking } from "./types";
 
 /**
  * Payment screenshots.
  *
- * These used to go to Firebase Storage, which meant a second rules file to
- * publish, a bucket to provision, and an upload that simply hung forever
- * when either was missing. For 89 phone screenshots that was a lot of
- * moving parts to get wrong.
+ * They go to **Cloudinary**, the same as the TEDx app: the browser gets a
+ * signature from our own server and uploads straight there, so the file
+ * never passes through the server and the API secret never reaches a page.
  *
- * They are now shrunk in the browser and written into the Realtime Database
- * the app already uses. A resized JPEG is well under 200 KB, so the whole
- * trip is a few megabytes - nothing against the free tier - and there is
- * nothing extra to set up.
+ * If Cloudinary isn't configured, they fall back to the Realtime Database
+ * the app already uses — shrunk small enough that 89 of them are a few
+ * megabytes. That is deliberate: this app has repeatedly been blocked by a
+ * missing piece of setup, and an upload that works before anyone has
+ * configured anything is worth more than a tidier single path.
  *
- * They live under `jawaiTrip/paymentShots/<bookingId>`, NOT on the booking
- * itself, so the admin list can load 89 bookings without dragging 89 images
- * down with them. Only opening one booking fetches its image.
+ * Either way they are shrunk first. A payment screenshot only has to be
+ * readable by a human checking an amount.
  */
 
-/** Marker stored on the booking when the image is in the database. */
+/** Stored on the booking when the image is in the database, not on a CDN. */
 export const STORED_IN_DB = "stored";
 
 /** Comfortably under Realtime Database's string limit, with headroom. */
@@ -62,12 +62,8 @@ async function loadImage(file: File): Promise<ImageBitmap | HTMLImageElement> {
   });
 }
 
-/**
- * Resizes and re-encodes as JPEG, dropping quality until it fits. A payment
- * screenshot only has to be readable by a human checking an amount, so the
- * loss is irrelevant and the saving is large.
- */
-async function compress(file: File): Promise<string> {
+/** Resizes onto a canvas, ready to be encoded as a blob or a data URL. */
+async function resize(file: File): Promise<HTMLCanvasElement> {
   const source = await loadImage(file);
   const width = "width" in source ? source.width : 0;
   const height = "height" in source ? source.height : 0;
@@ -83,18 +79,21 @@ async function compress(file: File): Promise<string> {
   context.drawImage(source as CanvasImageSource, 0, 0, canvas.width, canvas.height);
   if ("close" in source) source.close();
 
-  for (const quality of [0.72, 0.6, 0.45, 0.3]) {
-    const encoded = canvas.toDataURL("image/jpeg", quality);
-    if (encoded.length <= MAX_ENCODED_BYTES) return encoded;
-  }
+  return canvas;
+}
 
-  throw new Error(
-    "That screenshot is too detailed to send. Crop it to just the payment confirmation and try again."
-  );
+function toBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Could not encode the image."))),
+      "image/jpeg",
+      quality
+    );
+  });
 }
 
 /**
- * Firebase retries a failed write for a long time before giving up, which
+ * Firebase and fetch both retry for a long time before giving up, which
  * looks exactly like a frozen button. Fail loudly instead.
  */
 function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
@@ -112,7 +111,29 @@ export async function uploadScreenshot(
   const error = validateScreenshot(file);
   if (error) throw new Error(error);
 
-  const encoded = await compress(file);
+  const canvas = await resize(file);
+
+  if (isCloudinaryConfigured) {
+    const blob = await toBlob(canvas, 0.8);
+    return withTimeout(
+      uploadToCloudinary(blob, `${bookingId}.jpg`),
+      45_000,
+      "The upload timed out. Check your connection and try again."
+    );
+  }
+
+  // Database fallback: drop quality until it fits comfortably.
+  let encoded = "";
+  for (const quality of [0.72, 0.6, 0.45, 0.3]) {
+    encoded = canvas.toDataURL("image/jpeg", quality);
+    if (encoded.length <= MAX_ENCODED_BYTES) break;
+    encoded = "";
+  }
+  if (!encoded) {
+    throw new Error(
+      "That screenshot is too detailed to send. Crop it to just the payment confirmation and try again."
+    );
+  }
 
   await withTimeout(
     set(ref(db, tripPath("paymentShots", bookingId)), encoded),
@@ -124,8 +145,8 @@ export async function uploadScreenshot(
 }
 
 /**
- * What to put in an <img src>. Handles both the database-backed images and
- * any `https://` URL stored by an earlier version.
+ * What to put in an <img src>. Cloudinary URLs are used directly; the
+ * database fallback is fetched on demand, only when a booking is opened.
  */
 export async function readScreenshot(booking: Booking): Promise<string | null> {
   if (!booking.paymentScreenshotUrl) return null;
