@@ -120,9 +120,15 @@ export function UpiPayPanel({
             className="h-56 w-56 rounded-xl border border-neutral-200 bg-white object-contain p-2"
           />
           {!account.qrUrl && (
-            <p className="mt-2 text-center text-xs text-neutral-500">
-              Scan with any UPI app — the amount is already filled in.
-            </p>
+            <>
+              <p className="mt-2 hidden text-center text-xs text-neutral-500 sm:block">
+                <strong>On a laptop?</strong> Open GPay, PhonePe or any UPI app on
+                your phone, scan this, and pay. The amount is already filled in.
+              </p>
+              <p className="mt-2 text-center text-xs text-neutral-500 sm:hidden">
+                Scan with any UPI app — the amount is already filled in.
+              </p>
+            </>
           )}
         </div>
       )}

@@ -7,10 +7,12 @@ import {
   Inbox,
   Plus,
   RefreshCw,
+  Search,
   Settings2,
   Sheet,
   Trash2,
   Wallet,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -27,7 +29,12 @@ import {
 } from "@/components/ui/primitives";
 import { listBookings, readFinance, readSettings, saveFinance, saveSettings } from "@/lib/trip";
 import { profit } from "@/lib/pricing";
-import { paymentState, withLegacyPayment } from "@/lib/payments";
+import {
+  PAYMENT_METHOD_LABELS,
+  paymentMethod,
+  paymentState,
+  withLegacyPayment,
+} from "@/lib/payments";
 import { newUpiAccountId, upiAccounts } from "@/lib/upi";
 import {
   BOOKING_STATUS_COLORS,
@@ -72,6 +79,8 @@ function bookingsCsv(bookings: Booking[], finance: TripFinance): string {
     "Amount due",
     "Amount paid",
     "Still owed",
+    "How they paid",
+    "Cash taken by",
     "Paid to UPI",
     "Payee name",
     "Trip cost",
@@ -109,6 +118,15 @@ function bookingsCsv(bookings: Booking[], finance: TripFinance): string {
       booking.pricing.total,
       money.paid,
       money.outstanding,
+      money.transfers
+        .map((item) => PAYMENT_METHOD_LABELS[paymentMethod(item)])
+        .join(" + "),
+      // Cash has no statement behind it, so who took it belongs in the
+      // export alongside the amount.
+      money.transfers
+        .filter((item) => paymentMethod(item) === "CASH" && item.recordedByName)
+        .map((item) => item.recordedByName)
+        .join(", "),
       booking.payeeUpiId ?? "",
       booking.payeeName ?? "",
       // Cost and margin only mean anything once the money is in.
@@ -136,6 +154,7 @@ export default function AdminBookingsPage() {
   const [settings, setSettings] = useState<TripSettings>(DEFAULT_SETTINGS as TripSettings);
   const [finance, setFinance] = useState<TripFinance>(DEFAULT_FINANCE as TripFinance);
   const [filter, setFilter] = useState<BookingStatus | "ALL">("PENDING_VERIFICATION");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -192,8 +211,35 @@ export default function AdminBookingsPage() {
     );
   }
 
+  /**
+   * Finding one student to record their cash against.
+   *
+   * Email first, because that is what an admin has to hand when someone
+   * pays in person - but name, NIFT ID, phone and booking code all match
+   * too, so it works with whatever they actually know. A search ignores
+   * the status filter: hunting for a booking you cannot see because the
+   * wrong chip is selected is the exact frustration this removes.
+   */
+  const needle = search.trim().toLowerCase();
+  const searched = needle
+    ? bookings.filter((item) =>
+        [
+          item.bookerEmail,
+          item.bookerName,
+          item.niftId,
+          item.bookingCode,
+          item.bookerPhone,
+          item.travellers[0]?.name,
+          item.travellers[0]?.phone,
+        ]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(needle))
+      )
+    : null;
+
   const visible =
-    filter === "ALL" ? bookings : bookings.filter((item) => item.status === filter);
+    searched ??
+    (filter === "ALL" ? bookings : bookings.filter((item) => item.status === filter));
   const pendingCount = bookings.filter(
     (item) => item.status === "PENDING_VERIFICATION"
   ).length;
@@ -383,7 +429,38 @@ export default function AdminBookingsPage() {
         </CardBody>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Find a student by email, name, NIFT ID, phone or booking code"
+          className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-10 pr-10 text-sm outline-none placeholder:text-neutral-400 focus:border-[#16323f]"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {searched && (
+        <p className="text-xs text-neutral-500">
+          {searched.length === 0
+            ? "Nothing matches that — try their NIFT ID or booking code."
+            : `${searched.length} match${
+                searched.length === 1 ? "" : "es"
+              }, across every status.`}
+        </p>
+      )}
+
+      <div
+        className={`flex flex-wrap gap-2 ${searched ? "pointer-events-none opacity-40" : ""}`}
+      >
         {FILTERS.map((item) => (
           <button
             key={item.key}

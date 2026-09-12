@@ -288,10 +288,33 @@ finished paying" a sort rather than a hunt.
 > Bookings made before this read as a single full-amount transfer, so nothing already
 > confirmed suddenly looks unpaid.
 
+### Cash, and transfers straight to a lead
+
+Plenty of students just hand over cash. Before this there was no way to record that: a
+booking could only be paid by uploading a screenshot, so a paid-up student with cash in hand
+stayed stuck at "awaiting payment".
+
+**Record cash or a direct transfer** on the admin's booking page takes an amount, a method
+(cash / bank transfer / UPI to a lead's own ID) and a note. It goes into the **same list of
+transfers** as anything paid through the site, so a seat paid half in UPI and half in cash
+adds up correctly and the shortfall banner still works.
+
+> **Cash records who took it.** There is no statement behind a note handed over at a desk,
+> so the signed-in admin's name is the only account of where ₹2,099 went. It's captured
+> automatically, shown on the transfer, and exported in its own **"Cash taken by"** column —
+> so let whoever actually collected it be the one who enters it.
+
+**Find the student** with the search box at the top of `/admin` — email, name, NIFT ID,
+phone or booking code all match. A search ignores the status chips, because hunting for a
+booking you can't see due to the wrong filter is the exact frustration it exists to remove.
+
 ### Opening a UPI app directly
 
 Under the QR, on a phone, there are buttons for **Google Pay, PhonePe, Paytm** and any UPI
 app. Each opens that app with the amount and booking code already filled in.
+
+On a laptop the QR carries a "scan this with your phone" line instead — the buttons are
+Android-only and would be dead ends on a desktop.
 
 These are Android URL schemes (`tez://`, `phonepe://`, `paytmmp://`). **iOS mostly ignores
 them**, which is why the QR is always on screen and never hidden behind a button, and why

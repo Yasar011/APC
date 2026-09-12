@@ -197,14 +197,20 @@ export async function setBookingPayee(
  * them shows the newest proof rather than nothing.
  */
 export async function addPayment(bookingId: string, payment: PaymentProof) {
-  await update(ref(db, tripPath("bookings", bookingId)), {
+  const updates: Record<string, unknown> = {
     [`payments/${payment.id}`]: payment,
-    paymentScreenshotUrl: payment.url,
     paymentRef: payment.reference,
     status: "PENDING_VERIFICATION",
     rejectionReason: null,
     updatedAt: Date.now(),
-  });
+  };
+  // Cash has no screenshot. Leave the legacy field pointing at the last
+  // image there actually was rather than blanking it - an admin looking at
+  // an older transfer's proof should not lose it because the balance was
+  // later settled in cash.
+  if (payment.url) updates.paymentScreenshotUrl = payment.url;
+
+  await update(ref(db, tripPath("bookings", bookingId)), updates);
 }
 
 // ----------------------------------------------------------------- tickets

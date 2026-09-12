@@ -40,7 +40,13 @@ import {
 } from "@/lib/trip";
 import { profit, quote } from "@/lib/pricing";
 import { readScreenshot } from "@/lib/storage";
-import { paymentState, withLegacyPayment } from "@/lib/payments";
+import {
+  PAYMENT_METHOD_LABELS,
+  paymentMethod,
+  paymentState,
+  withLegacyPayment,
+} from "@/lib/payments";
+import { RecordPaymentForm } from "@/components/trip/RecordPaymentForm";
 import {
   BOOKING_STATUS_COLORS,
   BOOKING_STATUS_LABELS,
@@ -319,6 +325,9 @@ export default function AdminBookingDetailPage() {
                     <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-xs">
                       <span className="font-semibold text-neutral-900">
                         {index + 1}. {rupees(item.amount)}
+                        <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 font-medium text-neutral-600">
+                          {PAYMENT_METHOD_LABELS[paymentMethod(item)]}
+                        </span>
                       </span>
                       <span className="font-mono text-neutral-500">
                         {item.reference || "no reference"}
@@ -327,6 +336,13 @@ export default function AdminBookingDetailPage() {
                     {item.upiId && (
                       <p className="mb-2 font-mono text-xs text-neutral-500">
                         to {item.upiId}
+                      </p>
+                    )}
+                    {/* Cash has no bank record, so who took it is the only
+                        account there is of where the money went. */}
+                    {item.recordedByName && (
+                      <p className="mb-2 text-xs text-neutral-500">
+                        Taken by {item.recordedByName}
                       </p>
                     )}
                     {shots[item.id] ? (
@@ -354,9 +370,13 @@ export default function AdminBookingDetailPage() {
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </>
+                    ) : paymentMethod(item) === "CASH" ? (
+                      <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+                        Cash — nothing to show. {item.note || ""}
+                      </p>
                     ) : (
                       <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
-                        The screenshot for this transfer couldn&apos;t be loaded.
+                        {item.note || "No screenshot for this transfer."}
                       </p>
                     )}
                   </div>
@@ -364,8 +384,14 @@ export default function AdminBookingDetailPage() {
               </div>
             ) : (
               <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-500">
-                No screenshot uploaded yet.
+                Nothing paid yet.
               </p>
+            )}
+
+            {booking.status !== "CONFIRMED" && (
+              <div className="mt-5">
+                <RecordPaymentForm booking={booking} onAdded={load} />
+              </div>
             )}
 
             <dl className="mt-4 space-y-1.5 text-sm">

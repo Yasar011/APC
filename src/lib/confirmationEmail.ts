@@ -1,4 +1,9 @@
-import { paymentState, withLegacyPayment } from "./payments";
+import {
+  PAYMENT_METHOD_LABELS,
+  paymentMethod,
+  paymentState,
+  withLegacyPayment,
+} from "./payments";
 import { Booking, TripSettings } from "./types";
 
 /**
@@ -34,6 +39,7 @@ export const SHEET_COLUMNS = [
   "Amount paid",
   "Still owed",
   "Transfers",
+  "How they paid",
   "Promo code",
   "Paid to UPI",
   "Booked at",
@@ -75,6 +81,9 @@ export function sheetRow(booking: Booking): (string | number)[] {
     money.paid,
     money.outstanding,
     money.transfers.length,
+    money.transfers
+      .map((item) => PAYMENT_METHOD_LABELS[paymentMethod(item)])
+      .join(" + "),
     booking.pricing.promoCode ?? "",
     booking.payeeUpiId ?? "",
     stamp(booking.createdAt),

@@ -123,10 +123,13 @@ export interface PricingBreakdown {
  * ID is capped by the bank (commonly 2,000 in the first 24 hours), so a
  * 2,099 seat often cannot be paid in one go. See src/lib/payments.ts.
  */
+/** How the money reached the club. */
+export type PaymentMethod = "UPI" | "CASH" | "BANK";
+
 export interface PaymentProof {
   /** Unique within the booking; also the key the image is stored under. */
   id: string;
-  /** Cloudinary URL, or STORED_IN_DB when it's in the database. */
+  /** Cloudinary URL, STORED_IN_DB, or "" for cash handed over in person. */
   url: string;
   /** What this transfer was for, in rupees. */
   amount: number;
@@ -135,6 +138,19 @@ export interface PaymentProof {
   /** Which of the club's UPI IDs it went to. */
   upiId: string | null;
   at: number;
+  /** Defaults to UPI - the only kind that existed before cash was added. */
+  method?: PaymentMethod;
+  /**
+   * Who recorded it, for anything an admin entered by hand.
+   *
+   * Cash has no bank record behind it, so the only account of who took
+   * ₹2,099 off a student is this. Never optional in practice for CASH:
+   * the form requires an admin to be signed in to write one.
+   */
+  recordedBy?: string | null;
+  recordedByName?: string | null;
+  /** Free text for a bank reference, "paid at the desk", and so on. */
+  note?: string | null;
 }
 
 export interface Booking {

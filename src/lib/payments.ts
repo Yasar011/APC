@@ -1,4 +1,4 @@
-import { Booking, PaymentProof } from "./types";
+import { Booking, PaymentMethod, PaymentProof } from "./types";
 
 /**
  * A booking can be paid in more than one go.
@@ -91,6 +91,28 @@ export function withLegacyPayment(booking: Booking): Booking {
     at: booking.updatedAt || booking.createdAt,
   };
   return { ...booking, payments: { legacy } };
+}
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  UPI: "UPI",
+  CASH: "Cash",
+  BANK: "Bank transfer",
+};
+
+/** Anything written before cash existed was a UPI transfer. */
+export function paymentMethod(payment: PaymentProof): PaymentMethod {
+  return payment.method ?? "UPI";
+}
+
+/**
+ * Cash needs a name against it.
+ *
+ * There is no bank record behind a note handed over at a desk, so the only
+ * account of where ₹2,099 went is which admin said they took it. Anything
+ * else is reconcilable from a statement; this is not.
+ */
+export function needsCollector(payment: PaymentProof): boolean {
+  return paymentMethod(payment) === "CASH" && !payment.recordedByName;
 }
 
 /** New payment id. Only has to be unique within one booking. */
