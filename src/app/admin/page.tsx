@@ -6,6 +6,7 @@ import {
   CircleAlert,
   Inbox,
   Plus,
+  RefreshCw,
   Settings2,
   Sheet,
   Trash2,
@@ -36,6 +37,7 @@ import {
 import { Booking, BookingStatus, TripFinance, TripSettings, UpiAccount } from "@/lib/types";
 import { formatDateTime, rupees } from "@/lib/utils";
 import { downloadCsv, stampedFileName, toCsv } from "@/lib/csv";
+import { syncBookingsToSheet } from "@/lib/notify";
 
 /**
  * Every booking as a spreadsheet.
@@ -131,6 +133,21 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  async function syncSheet() {
+    setSyncing(true);
+    try {
+      const wrote = await syncBookingsToSheet();
+      toast.success(`${wrote} booking${wrote === 1 ? "" : "s"} written to the sheet`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not sync the sheet."
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -221,16 +238,27 @@ export default function AdminBookingsPage() {
             variant="secondary"
             size="md"
             disabled={bookings.length === 0}
+            loading={syncing}
+            onClick={syncSheet}
+            title="Writes every booking into the trip Google Sheet"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Sync to Google Sheet
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            disabled={bookings.length === 0}
             onClick={() =>
               downloadCsv(
                 stampedFileName("jawai-bookings"),
                 bookingsCsv(bookings, finance)
               )
             }
-            title="Opens in Google Sheets, Excel or Numbers"
+            title="Downloads a CSV — opens in Sheets, Excel or Numbers"
           >
             <Sheet className="h-4 w-4" />
-            Export to Sheets
+            Download CSV
           </Button>
           <Button variant="secondary" size="md" onClick={() => setSettingsOpen(true)}>
             <Settings2 className="h-4 w-4" />

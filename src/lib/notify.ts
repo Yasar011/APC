@@ -35,6 +35,24 @@ export async function sendConfirmationEmail(bookingId: string): Promise<string> 
   return body.to as string;
 }
 
+/**
+ * Pushes every booking into the trip spreadsheet. Rows only - a sync must
+ * never mail 89 students a second time.
+ */
+export async function syncBookingsToSheet(): Promise<number> {
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error("You need to be signed in.");
+
+  const response = await fetch("/api/sheets/sync", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body?.error || "Could not sync the sheet.");
+  return (body.wrote as number) ?? 0;
+}
+
 /** The same confirmation, as a WhatsApp message ready to send. */
 export function whatsappConfirmationHref(
   booking: Booking,

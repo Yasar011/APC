@@ -205,37 +205,62 @@ Pausing an account stops new students being sent to it but leaves every past boo
 record intact — which is the point of keeping the ID on the booking rather than looking it
 up from settings later.
 
-### Confirmation email
+### Google Sheet and confirmation email
 
-When an admin confirms a payment, the student is **emailed automatically** — booking
-code, amount paid, departure and pickup, their ticket code, and the WhatsApp group link.
+Both are one thing: an **Apps Script deployed on the trip spreadsheet**. When an admin
+confirms a payment the site posts the booking to it, and the script **writes the row into
+the sheet and emails the student** — booking code, amount, departure, pickup, ticket code
+and the WhatsApp group link.
 
-It goes out over the **club's own Gmail** with an App Password, not through a transactional
-provider. Providers won't mail anyone but you until you've verified a sending domain, which
-the club doesn't have; Gmail sends from the address students already recognise and allows
-500 a day, which 89 seats fits inside several times over.
+`MailApp` sends as the Google account that owns the script, so **there is no mail password
+anywhere** — no App Password to create, no SMTP credential on a server — and the mail
+arrives from an address students already recognise. The sheet fills itself in as a
+side-effect, which is the other half of the job.
+
+**Setup** is in `apps-script/Code.gs`, with the steps in a comment at the top:
+
+1. Trip spreadsheet → **Extensions → Apps Script**, paste the file in
+2. Change `SECRET` to something long and random
+3. **Deploy → New deployment → Web app**, *Execute as: Me*, *Who has access: Anyone*
+4. Put the `/exec` URL and the same secret in the site's environment:
 
 ```
-GMAIL_USER=                 # the club's gmail address
-GMAIL_APP_PASSWORD=         # 16 characters from myaccount.google.com/apppasswords
+SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/.../exec
+SHEETS_WEBHOOK_SECRET=   # identical to SECRET in the script
 ```
 
-That is an **App Password**, not the account password — turn on 2-Step Verification first or
-the page won't offer you one.
+> **"Anyone" is required**, not careless. The deployment has to be reachable without a
+> Google login for the site to call it at all. The **secret is the only thing between that
+> endpoint and the open internet**, which is why it lives in an environment variable and
+> never in `jawaiTrip/settings` — settings are world-readable, so putting it there would
+> publish it.
 
-**Without them, confirming still works.** The booking is confirmed and the ticket is issued
-exactly as before; the email just doesn't go out, and the admin sends the same message on
-**WhatsApp** from the booking page instead — one tap, already written, to the number on the
-booking. That button is always there, whether email is set up or not.
+> Edit the script later and you must **Deploy → New deployment** again. Google keeps serving
+> the old version otherwise, and it looks like nothing changed.
 
-Two things make the endpoint safe without a Firebase Admin SDK:
+Rows are matched on the **booking code**, so re-sending a confirmation or re-running a sync
+**updates the student's row in place** instead of piling up duplicates.
 
-- it reads the booking **as the caller**, using their own ID token against the Realtime
-  Database REST API, so the rules already published do the authorising — no second copy of
-  the admin check to drift out of step;
-- the recipient is the address **stored on the booking** and the status is read **from the
-  database**, so nobody can mail a stranger or conjure a confirmation for a booking no admin
-  has verified.
+**Sync to Google Sheet** on `/admin` pushes *every* booking — ones made before the sheet
+existed, ones still waiting to be verified. It writes rows only: a sync must never mail 89
+students a second time.
+
+That endpoint is **admin-only, enforced by the database rules rather than by a check in the
+code**. It reads the whole `jawaiTrip/bookings` node as the caller, and the rules grant a
+student read on a single booking but never on the parent — so a read that succeeds *is* the
+proof. Same trick as the email route, and the reason there is no second copy of the admin
+list to drift out of step with the rules.
+
+#### If you'd rather not use Apps Script
+
+`GMAIL_USER` + `GMAIL_APP_PASSWORD` sends the same email over Gmail SMTP, with nothing
+written to the sheet. That's an **App Password** from `myaccount.google.com/apppasswords`,
+not the account password — turn on 2-Step Verification first or Google won't offer you one.
+
+**And with neither configured, confirming still works.** The booking is confirmed and the
+ticket issued exactly as before; the email just doesn't go out, and the admin sends the same
+message on **WhatsApp** from the booking page — one tap, already written, to the number on
+the booking. That button is there either way.
 
 ### WhatsApp group
 
@@ -249,29 +274,26 @@ so the group is people who have actually paid.
 
 > The link is stored in `jawaiTrip/settings`, which is world-readable — the public page needs
 > the price and dates from the same node. The app only *shows* it to confirmed students, but
-> anyone who reads the database directly could find it. Treat it as "not advertised" rather
+> anyone reading the database directly could find it. Treat it as "not advertised" rather
 > than secret, and rely on the group's own admission settings the way you would with any
 > invite link that gets forwarded.
 
-### Spreadsheets
+### CSV download
 
-**Export to Sheets** on `/admin` and `/admin/roster` downloads a CSV. Drop it on Google
-Drive, or **File → Import** in a sheet, and it opens straight up — it works in Excel and
-Numbers too.
+**Download CSV** on `/admin` and `/admin/roster` is the offline path, for when you want a
+file rather than the live sheet — or a snapshot the club still has in hand if the database
+is unreachable on trip day. It opens in Google Sheets, Excel and Numbers.
 
 - `/admin` exports **every booking**, including the promo, which UPI ID it was paid into,
-  and the cost/profit split. That last part is why the export is built on an admin page: the
-  margin isn't stored on the booking, it's worked out from the admin-only finance node.
+  and the cost/profit split. That last part is why it's built on an admin page: the margin
+  isn't stored on the booking, it's worked out from the admin-only finance node.
 - `/admin/roster` exports the **manifest** — blood groups, conditions, allergies,
   medications and emergency contacts.
 
-A file rather than a live Google Sheets sync on purpose: a sync needs a service account, a
-shared sheet and a set of credentials that can each go wrong, and this app has been held up
-by missing setup more than once. A download needs nothing, and it's still a snapshot the
-club has in hand if the database is unreachable on trip day.
-
-Cells beginning `=`, `+`, `-` or `@` are quoted before export, so a name or NIFT ID typed by
-a student is never handed to a spreadsheet's formula engine.
+Cells beginning `=`, `+`, `-` or `@` are quoted first, so a name or NIFT ID typed by a
+student is never handed to a spreadsheet's formula engine. Numbers skip that guard — quoting
+a negative "club keeps" would land the one row worth looking at as text that Sheets refuses
+to add up.
 
 ### Booking flow
 
@@ -346,7 +368,8 @@ an admin, never an `orderByChild` query.
 | `/admin/promos` | Admins | Promo codes |
 | `/admin/roster` | Admins | Printable manifest |
 | `/admin/scan` | Admins | Bus check-in |
-| `/api/email/confirmation` | Admins & the booker | Sends the confirmation email |
+| `/api/email/confirmation` | Admins & the booker | Sheet row + confirmation email |
+| `/api/sheets/sync` | Admins | Pushes every booking into the sheet |
 
 ---
 

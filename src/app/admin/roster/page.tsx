@@ -150,10 +150,10 @@ export default function RosterPage() {
             variant="secondary"
             disabled={rows.length === 0}
             onClick={() => downloadCsv(stampedFileName("jawai-roster"), rosterCsv(rows))}
-            title="Opens in Google Sheets, Excel or Numbers"
+            title="Downloads a CSV — opens in Sheets, Excel or Numbers"
           >
             <Sheet className="h-4 w-4" />
-            Export to Sheets
+            Download CSV
           </Button>
           <Button onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
