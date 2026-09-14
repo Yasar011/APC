@@ -55,3 +55,26 @@ export function niftIdKey(niftId: string) {
     .replace(/\s+/g, "")
     .replace(/[.$#\[\]/]/g, "-");
 }
+
+/**
+ * An email address as a database key.
+ *
+ * Realtime Database keys cannot contain `.` `$` `#` `[` `]` or `/`, and
+ * every email has at least one dot. Percent-encoding those rather than
+ * flattening them to `-` matters: `a.b@x.com` and `a-b@x.com` are
+ * different people, and `-` would collide them onto one key.
+ *
+ * Lowercased, because nobody types their own address the same way twice.
+ */
+export function emailKey(email: string) {
+  return email
+    .trim()
+    .toLowerCase()
+    .replace(/%/g, "%25")
+    .replace(/\./g, "%2E")
+    .replace(/\$/g, "%24")
+    .replace(/#/g, "%23")
+    .replace(/\[/g, "%5B")
+    .replace(/\]/g, "%5D")
+    .replace(/\//g, "%2F");
+}

@@ -59,7 +59,6 @@ export function PaymentForm({
   const remaining = state.outstanding;
 
   const [method, setMethod] = useState<PaymentMethod>("UPI");
-  const [amount, setAmount] = useState(String(remaining));
   const [reference, setReference] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -68,14 +67,14 @@ export function PaymentForm({
   const [payingAgain, setPayingAgain] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const typed = Math.round(Number(amount) || 0);
+  // What the page asked for. An admin corrects it against the screenshot.
+  const typed = remaining;
   const byBank = method === "BANK";
   const bankAvailable = Boolean(
     settings.bankAccountNumber?.trim() && settings.bankIfsc?.trim()
   );
 
   const missing = [
-    typed <= 0 && "how much you paid",
     !reference.trim() && "the reference number",
     !file && "a screenshot",
   ].filter(Boolean) as string[];
@@ -141,10 +140,7 @@ export function PaymentForm({
 
         <button
           type="button"
-          onClick={() => {
-            setPayingAgain(true);
-            setAmount("");
-          }}
+          onClick={() => setPayingAgain(true)}
           className="w-full text-center text-xs text-neutral-500 underline"
         >
           Something went wrong and you need to send more?
@@ -229,36 +225,26 @@ export function PaymentForm({
         <Step number={2} title="Tell us you've paid" />
 
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="How much you sent"
+          {/* The amount is not asked for. It is the one number a student
+              has no reason to get right and every reason to mistype, and
+              the admin reads it off the screenshot anyway - so the page
+              records what it asked for and the admin corrects it if the
+              screenshot disagrees. */}
+          <Field
+            label={byBank ? "Transaction reference" : "UPI reference number"}
+            required
+            hint={
+              byBank
+                ? "The UTR your bank shows for the transfer."
+                : "The transaction or UTR number your app shows."
+            }
+          >
+            <Input
+              value={reference}
+              onChange={(event) => setReference(event.target.value)}
               required
-              hint="This one transfer, not the total."
-            >
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                required
-              />
-            </Field>
-            <Field
-              label={byBank ? "Transaction reference" : "UPI reference number"}
-              required
-              hint={
-                byBank
-                  ? "The UTR your bank shows for the transfer."
-                  : "The transaction or UTR number your app shows."
-              }
-            >
-              <Input
-                value={reference}
-                onChange={(event) => setReference(event.target.value)}
-                required
-              />
-            </Field>
-          </div>
+            />
+          </Field>
 
           <input
             ref={fileInputRef}
@@ -301,9 +287,7 @@ export function PaymentForm({
             loading={saving}
             disabled={missing.length > 0}
           >
-            {typed > 0 && typed < remaining
-              ? `Record ${rupees(typed)} and pay the rest after`
-              : "Send for approval"}
+            Send for approval
           </Button>
 
           {/* A greyed-out button with no reason is just a dead end. */}

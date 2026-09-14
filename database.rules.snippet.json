@@ -46,11 +46,11 @@
     "bookings": {
       ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
       "$bookingId": {
-        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
-        ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid && auth.token.email_verified === true) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (data.child('claimEmail').exists() && data.child('claimEmail').val() === auth.token.email) || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid && auth.token.email_verified === true) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (data.exists() && data.child('bookerUid').val() === '' && data.child('claimEmail').val() === auth.token.email && auth.token.email_verified === true && newData.child('bookerUid').val() === auth.uid) || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
         ".validate": "newData.hasChildren(['bookerUid', 'niftId', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
         "bookerUid": {
-          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val() || data.val() === '')"
         },
         "seats": {
           ".validate": "newData.isNumber() && newData.val() === 1"
@@ -132,6 +132,13 @@
       ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
       "$code": {
         ".read": "auth != null"
+      }
+    },
+    "claimIndex": {
+      ".write": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
+      "$emailKey": {
+        ".read": "auth != null",
+        ".validate": "newData.isString()"
       }
     }
   }

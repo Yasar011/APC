@@ -285,6 +285,12 @@ looking like a normal confirm. Overpayment is flagged too, as a refund to make.
 The amount is typed by the student, so it is a **claim, not a fact** — it exists to make the
 screenshot quick to check, and the admin check is still the control.
 
+**Students don't type the amount.** It is the one number they have no reason to get right
+and every reason to mistype, and an admin reads it off the screenshot anyway — so the page
+records what it asked for, and each transfer on the admin's page has a **"Screenshot shows a
+different amount? Correct it"** control. Lowering it puts the balance back on the student's
+page, so a short payment becomes an outstanding one rather than a silently under-paid seat.
+
 `Still owed` is a column in both the CSV and the Google Sheet, which makes "who hasn't
 finished paying" a sort rather than a hunt.
 
@@ -414,6 +420,33 @@ student is never handed to a spreadsheet's formula engine. Numbers skip that gua
 a negative "club keeps" would land the one row worth looking at as text that Sheets refuses
 to add up.
 
+### Booking someone in yourself
+
+Students pay in person, message a lead, or never get round to the site — and a club that
+cannot write those down keeps the real list somewhere else, which is how a bus leaves with a
+name nobody checked.
+
+**Book for someone** on `/admin` creates a seat against a student's **email address**: name,
+NIFT ID, optional phone, and nothing else. When they sign in with that address, `/book`
+offers them the seat instead of a blank form, and **they** fill in blood group, allergies and
+emergency contact. A lead guessing at a blood group is worse than a blank.
+
+The claim is enforced by the **database rules**, not the button: a booking created this way
+has an empty `bookerUid`, and the only write that may fill it in is one where the booking's
+`claimEmail` equals `auth.token.email` and that address is verified. `bookerUid` is
+otherwise immutable, so a claimed seat cannot be taken again.
+
+`jawaiTrip/claimIndex/<email>` maps the address to the booking — a single key lookup, since
+a student cannot list bookings. Emails are percent-encoded as keys rather than having their
+dots flattened to `-`: `a.b@x.com` and `a-b@x.com` are different people.
+
+> A signed-in student who guesses an address can learn *that* a booking exists for it. They
+> cannot read it — that needs the matching verified email — so what leaks is one bit about
+> an address they already knew.
+
+The prompt sits above the booking form on purpose: a student who books a second seat without
+noticing has taken two of eighty-nine and paid for one.
+
 ### Booking flow
 
 ```
@@ -461,6 +494,7 @@ Everything under `jawaiTrip`:
 | `bookingsByUser/$uid/$id` | "Does this person already have a booking?" |
 | `bookingCodeIndex/$code` | Booking code → booking id. |
 | `niftIdIndex/$niftId` | **One seat per NIFT ID** — the claim that enforces it. |
+| `claimIndex/$email` | Email → a booking a lead made for them, until they claim it. |
 | `tickets/$ticketCode` | One per booking. **The key is the QR payload.** |
 | `ticketsByBooking/$id/$code` | Tickets belonging to a booking. |
 | `promoCodes/$CODE` | Promo codes. |

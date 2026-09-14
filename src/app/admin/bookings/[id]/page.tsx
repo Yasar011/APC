@@ -37,6 +37,7 @@ import {
   readPromo,
   readSettings,
   rejectBooking,
+  setPaymentAmount,
 } from "@/lib/trip";
 import { profit, quote } from "@/lib/pricing";
 import { readScreenshot } from "@/lib/storage";
@@ -100,6 +101,21 @@ export default function AdminBookingDetailPage() {
     DEFAULT_SETTINGS as TripSettings
   );
   const [emailing, setEmailing] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+
+  async function saveAmount(paymentId: string) {
+    if (!booking) return;
+    try {
+      await setPaymentAmount(booking.id, paymentId, Number(editAmount) || 0);
+      setEditing(null);
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update that amount."
+      );
+    }
+  }
   const [recomputed, setRecomputed] = useState<PricingBreakdown | null>(null);
   const [shots, setShots] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -333,6 +349,43 @@ export default function AdminBookingDetailPage() {
                         {item.reference || "no reference"}
                       </span>
                     </div>
+
+                    {/* Students don't type the amount - the page records
+                        what it asked for. This is where the screenshot gets
+                        the last word, and lowering it puts the balance back
+                        on the student's page. */}
+                    {editing === item.id ? (
+                      <div className="mb-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={editAmount}
+                          autoFocus
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          className="h-8 w-28 rounded-lg border border-neutral-300 px-2 text-sm"
+                        />
+                        <Button size="sm" onClick={() => saveAmount(item.id)}>
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditing(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditing(item.id);
+                          setEditAmount(String(item.amount));
+                        }}
+                        className="mb-2 text-xs text-amber-700 underline"
+                      >
+                        Screenshot shows a different amount? Correct it
+                      </button>
+                    )}
                     {item.upiId && (
                       <p className="mb-2 font-mono text-xs text-neutral-500">
                         to {item.upiId}

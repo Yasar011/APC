@@ -17,6 +17,7 @@ import { TravellerForm, emptyTraveller } from "@/components/trip/TravellerForm";
 import { PriceBreakdown } from "@/components/trip/PriceBreakdown";
 import { PaymentForm } from "@/components/trip/PaymentForm";
 import { VerifyEmailNotice } from "@/components/trip/VerifyEmailNotice";
+import { ClaimBookingNotice } from "@/components/trip/ClaimBookingNotice";
 import {
   Button,
   Card,
@@ -267,6 +268,7 @@ export default function BookPage() {
   return (
     <Shell>
       <VerifyEmailNotice blocking />
+      <ClaimBookingNotice />
       {emailVerified && <Stepper step={step} />}
 
       {emailVerified && step === "details" && (

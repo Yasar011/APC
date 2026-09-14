@@ -9,7 +9,7 @@ import {
   update,
 } from "firebase/database";
 import { db, tripPath } from "./firebase";
-import { newTicketCode, niftIdKey } from "./codes";
+import { emailKey, newBookingCode, newTicketCode, niftIdKey } from "./codes";
 import { DEFAULT_FINANCE, DEFAULT_SETTINGS, FOUNDER_ADMIN_UID } from "./constants";
 import {
   Booking,
@@ -160,14 +160,145 @@ export async function createBooking(
   const bookingId = push(ref(db, tripPath("bookings"))).key;
   if (!bookingId) throw new Error("Could not allocate a booking id");
 
-  await update(ref(db), {
+  const updates: Record<string, unknown> = {
     [tripPath("bookings", bookingId)]: booking,
-    [tripPath("bookingsByUser", booking.bookerUid, bookingId)]: true,
     [tripPath("bookingCodeIndex", booking.bookingCode)]: bookingId,
     [tripPath("niftIdIndex", niftIdKey(booking.niftId))]: bookingId,
-  });
+  };
+
+  // A booking an admin made for someone who hasn't signed in yet has no uid
+  // to index against; it is found by email until they claim it.
+  if (booking.bookerUid) {
+    updates[tripPath("bookingsByUser", booking.bookerUid, bookingId)] = true;
+  }
+  if (booking.claimEmail) {
+    updates[tripPath("claimIndex", emailKey(booking.claimEmail))] = bookingId;
+  }
+
+  await update(ref(db), updates);
 
   return bookingId;
+}
+
+/**
+ * A seat a trip lead entered on someone's behalf.
+ *
+ * Students pay in person, message a lead, or simply never get round to the
+ * site — and a club that cannot write those down ends up keeping the real
+ * list somewhere else, which is how a bus leaves with a name nobody
+ * checked. So the booking is created now, against their email address, and
+ * they take it over when they sign in.
+ *
+ * Only the essentials are asked for. Blood group, allergies and emergency
+ * contact are the student's to fill in once they claim it — a lead
+ * guessing at a blood group is worse than a blank.
+ */
+export async function createManualBooking(input: {
+  email: string;
+  name: string;
+  niftId: string;
+  phone: string;
+  pricing: Booking["pricing"];
+  adminUid: string;
+  adminName: string;
+}): Promise<{ bookingId: string; bookingCode: string }> {
+  const now = Date.now();
+  const bookingCode = newBookingCode();
+  const email = input.email.trim().toLowerCase();
+
+  const booking: Omit<Booking, "id"> = {
+    bookerUid: "",
+    claimEmail: email,
+    claimedAt: null,
+    createdBy: input.adminUid,
+    createdByName: input.adminName,
+    bookerName: input.name.trim(),
+    bookerEmail: email,
+    bookerPhone: input.phone.trim(),
+    niftId: input.niftId.trim(),
+    seats: 1,
+    travellers: [
+      {
+        name: input.name.trim(),
+        phone: input.phone.trim(),
+        niftId: input.niftId.trim(),
+        programme: "",
+        semester: "",
+        age: "",
+        gender: "",
+        bloodGroup: "",
+        medicalConditions: "",
+        allergies: "",
+        medications: "",
+        emergencyContactName: "",
+        emergencyContactPhone: "",
+        emergencyContactRelation: "",
+      },
+    ],
+    pricing: input.pricing,
+    paymentScreenshotUrl: null,
+    paymentRef: "",
+    payeeUpiId: null,
+    payeeName: null,
+    status: "AWAITING_PAYMENT",
+    rejectionReason: null,
+    bookingCode,
+    verifiedBy: null,
+    verifiedByName: null,
+    verifiedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const bookingId = await createBooking(booking);
+  return { bookingId, bookingCode };
+}
+
+/**
+ * Corrects what a transfer was actually worth.
+ *
+ * Students no longer type the amount — the page records what it asked for
+ * and the admin sets the truth from the screenshot. Lowering it makes the
+ * balance reappear on the student's page, so a short payment turns back
+ * into an outstanding one rather than a silently under-paid seat.
+ */
+export async function setPaymentAmount(
+  bookingId: string,
+  paymentId: string,
+  amount: number
+) {
+  await update(ref(db, tripPath("bookings", bookingId)), {
+    [`payments/${paymentId}/amount`]: Math.max(0, Math.round(amount)),
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * "Has someone already booked a seat for me?"
+ *
+ * A single key lookup on the email index — a student cannot list bookings,
+ * so this is the only way they can find one made in their name.
+ */
+export async function findClaimableBooking(
+  email: string
+): Promise<Booking | null> {
+  const snap = await get(ref(db, tripPath("claimIndex", emailKey(email))));
+  if (!snap.exists()) return null;
+
+  const booking = await readBooking(snap.val() as string);
+  // Already taken over, by them or by anyone: nothing left to claim.
+  return booking && !booking.bookerUid ? booking : null;
+}
+
+/** Takes over a booking a lead created. The rules check the email matches. */
+export async function claimBooking(booking: Booking, uid: string) {
+  const now = Date.now();
+  await update(ref(db), {
+    [tripPath("bookings", booking.id, "bookerUid")]: uid,
+    [tripPath("bookings", booking.id, "claimedAt")]: now,
+    [tripPath("bookings", booking.id, "updatedAt")]: now,
+    [tripPath("bookingsByUser", uid, booking.id)]: true,
+  });
 }
 
 /**

@@ -46,6 +46,7 @@ import { Booking, BookingStatus, TripFinance, TripSettings, UpiAccount } from "@
 import { formatDateTime, rupees } from "@/lib/utils";
 import { downloadCsv, stampedFileName, toCsv } from "@/lib/csv";
 import { syncBookingsToSheet } from "@/lib/notify";
+import { ManualBookingModal } from "@/components/trip/ManualBookingModal";
 
 /**
  * Every booking as a spreadsheet.
@@ -158,6 +159,7 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   async function syncSheet() {
@@ -334,6 +336,10 @@ export default function AdminBookingsPage() {
           <Button variant="secondary" size="md" onClick={() => setSettingsOpen(true)}>
             <Settings2 className="h-4 w-4" />
             Trip settings
+          </Button>
+          <Button size="md" onClick={() => setManualOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Book for someone
           </Button>
         </div>
       </div>
@@ -570,6 +576,13 @@ export default function AdminBookingsPage() {
           </div>
         </Card>
       )}
+
+      <ManualBookingModal
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+        settings={settings}
+        onCreated={load}
+      />
 
       <SettingsModal
         open={settingsOpen}

@@ -167,7 +167,21 @@ export interface PaymentProof {
 
 export interface Booking {
   id: string;
+  /**
+   * Empty string on a booking an admin made for someone who has not signed
+   * in yet — see `claimEmail`. Set to their uid when they claim it.
+   */
   bookerUid: string;
+  /**
+   * Set when a trip lead booked a seat on someone's behalf: the address
+   * they must sign in with to take it over. Cleared on nothing — it stays
+   * as the record of how the booking started.
+   */
+  claimEmail?: string | null;
+  claimedAt?: number | null;
+  /** Which admin entered it, for a booking nobody made themselves. */
+  createdBy?: string | null;
+  createdByName?: string | null;
   bookerName: string;
   bookerEmail: string;
   bookerPhone: string;
