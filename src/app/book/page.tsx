@@ -38,6 +38,7 @@ import { activeUpiAccounts, pickUpiForUser } from "@/lib/upi";
 import { DEFAULT_SETTINGS } from "@/lib/constants";
 import { Booking, PromoCode, Traveller, TripSettings, UpiAccount } from "@/lib/types";
 import { rupees } from "@/lib/utils";
+import { diagnoseBookingFailure } from "@/lib/diagnose";
 
 type Step = "details" | "review" | "pay";
 
@@ -215,16 +216,13 @@ export default function BookPage() {
       const message =
         error instanceof Error ? error.message : "Could not save your booking.";
 
-      // A rules rejection has more than one cause, and guessing at it sent
-      // students a message about their NIFT ID when the real problem was a
-      // stale token. Ask the database which it was rather than assuming.
+      // A rules rejection has more than one cause. Check which, rather than
+      // guessing — guessing sent students a message about their NIFT ID
+      // when the real problem was a stale token.
       if (message.toLowerCase().includes("permission")) {
-        const taken = await isNiftIdTaken(traveller.niftId).catch(() => false);
-        toast.error(
-          taken
-            ? `${traveller.niftId} already has a seat. One seat per NIFT ID — message the trip leads if that's wrong.`
-            : "Your sign-in needs refreshing. Sign out, sign back in, and try again."
-        );
+        toast.error(await diagnoseBookingFailure(user, traveller.niftId), {
+          duration: 10000,
+        });
         return;
       }
 
