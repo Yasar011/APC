@@ -167,6 +167,15 @@ export function UpiPayPanel({
               </a>
             ))}
           </div>
+          {/* The app opening and then refusing is a different failure from
+              the app not opening, and it has different causes - so it gets
+              its own line rather than being folded into "nothing opened". */}
+          <p className="mt-2 text-center text-xs text-neutral-500">
+            App opened but refused the payment? You can&apos;t send money to
+            your own UPI ID — if this ID is yours, pay from someone
+            else&apos;s account.
+          </p>
+
           {/* The path with no scheme, no app and nothing to go wrong. When
               a deep link fails, this is what actually gets someone paid. */}
           <button
