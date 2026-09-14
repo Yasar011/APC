@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
@@ -28,7 +29,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +53,18 @@ function LoginForm() {
     }
     setBusy(true);
     try {
+      if (mode === "reset") {
+        await sendPasswordResetEmail(auth, email.trim());
+        toast.success(`Reset link sent to ${email.trim()}`, {
+          description:
+            "Check Spam and Promotions too — that's usually where it lands.",
+          duration: 9000,
+        });
+        setMode("signin");
+        setPassword("");
+        return;
+      }
+
       if (mode === "signin") {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       } else {
@@ -73,6 +86,19 @@ function LoginForm() {
       }
       router.replace(next);
     } catch (error) {
+      // Telling someone "no account has that email" turns this form into a
+      // way to find out who has an account. A reset request reports the
+      // same thing either way.
+      const code = error instanceof Error ? error.message : "";
+      if (mode === "reset" && code.includes("auth/user-not-found")) {
+        toast.success(`Reset link sent to ${email.trim()}`, {
+          description:
+            "Check Spam and Promotions too — that's usually where it lands.",
+          duration: 9000,
+        });
+        setMode("signin");
+        return;
+      }
       toast.error(friendlyAuthError(error));
     } finally {
       setBusy(false);
@@ -101,15 +127,22 @@ function LoginForm() {
           <CardBody className="pt-6">
             <div className="mb-6 text-center">
               <h1 className="text-lg font-semibold text-neutral-900">
-                {mode === "signin" ? "Sign in to book" : "Create your account"}
+                {mode === "reset"
+                  ? "Reset your password"
+                  : mode === "signin"
+                    ? "Sign in to book"
+                    : "Create your account"}
               </h1>
               <p className="mt-1 text-sm text-neutral-500">
-                {mode === "signin"
-                  ? "Use the same account as the APC movie night."
-                  : "New to APC? Set up an account to book your seat."}
+                {mode === "reset"
+                  ? "We'll email you a link to set a new one."
+                  : mode === "signin"
+                    ? "Use the same account as the APC movie night."
+                    : "New to APC? Set up an account to book your seat."}
               </p>
             </div>
 
+            {mode !== "reset" && (
             <div className="relative mb-5 flex rounded-lg bg-neutral-100 p-1 text-sm font-medium">
               <span
                 aria-hidden
@@ -131,6 +164,7 @@ function LoginForm() {
                 </button>
               ))}
             </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === "signup" && (
@@ -155,6 +189,7 @@ function LoginForm() {
                 />
               </Field>
 
+              {mode !== "reset" && (
               <Field
                 label="Password"
                 required
@@ -169,10 +204,35 @@ function LoginForm() {
                   autoComplete={mode === "signin" ? "current-password" : "new-password"}
                 />
               </Field>
+              )}
 
               <Button type="submit" loading={busy} className="w-full" size="lg">
-                {mode === "signin" ? "Sign in" : "Create account"}
+                {mode === "reset"
+                  ? "Email me a reset link"
+                  : mode === "signin"
+                    ? "Sign in"
+                    : "Create account"}
               </Button>
+
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={() => setMode("reset")}
+                  className="w-full text-center text-xs text-neutral-500 underline hover:text-neutral-800"
+                >
+                  Forgot your password?
+                </button>
+              )}
+
+              {mode === "reset" && (
+                <button
+                  type="button"
+                  onClick={() => setMode("signin")}
+                  className="w-full text-center text-xs text-neutral-500 underline hover:text-neutral-800"
+                >
+                  Back to sign in
+                </button>
+              )}
             </form>
           </CardBody>
         </Card>
