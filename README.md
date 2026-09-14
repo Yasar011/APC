@@ -426,20 +426,27 @@ Students pay in person, message a lead, or never get round to the site — and a
 cannot write those down keeps the real list somewhere else, which is how a bus leaves with a
 name nobody checked.
 
-**Book for someone** on `/admin` needs a **name, NIFT ID and phone**. The email is optional,
-because a lead writing someone down at a stall usually has a name and a number and nothing
-else — and refusing the booking until an address turns up is exactly how the real list ends
-up in a notebook instead.
+**Book a seat at the desk** on `/admin` takes a **name, NIFT ID and phone** — and the money,
+in the same form. In person the cash changes hands in the same breath as the name, and
+creating the seat then hunting for it in the list to record ₹2,099 you are already holding is
+how a cash payment ends up remembered rather than written down.
 
-Add the address whenever you get it, from the booking's own page. Until then the seat is
-marked **"No email yet"** in the list, because without one nobody can take it over.
+If the amount covers the seat, **"Confirm the seat now and issue the ticket"** is offered and
+on by default: the lead took the money themselves, so there is no screenshot to check and no
+reason to queue it behind one.
 
-Once linked, signing in with that address makes `/book` offer them the seat instead of a
-blank form, and **they** fill in blood group, allergies and emergency contact. A lead
-guessing at a blood group is worse than a blank.
+**No email is asked for.** A lead has a name and a number; the address turns up later or not
+at all. Link it from the booking's own page whenever it does, and signing in with it makes
+`/book` offer them the seat instead of a blank form — then **they** fill in blood group,
+allergies and emergency contact. A lead guessing at a blood group is worse than a blank, so
+the roster shows the gap instead.
 
-Changing the address moves the index entry rather than leaving the old one pointing here —
-otherwise whoever owns the first address could still claim a seat that is no longer theirs.
+Changing a linked address moves the index entry rather than leaving the old one pointing here
+— otherwise whoever owns the first address could still claim a seat that is no longer theirs.
+
+> **At the bus, a desk booking needs no phone.** The scanner takes a booking code typed by
+> hand, and the roster prints one against every name — so someone who never made an account,
+> and has no QR to show, is checked in from the paper list like everyone else.
 
 The claim is enforced by the **database rules**, not the button: a booking created this way
 has an empty `bookerUid`, and the only write that may fill it in is one where the booking's

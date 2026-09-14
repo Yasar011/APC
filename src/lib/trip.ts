@@ -202,7 +202,7 @@ export async function createManualBooking(input: {
   pricing: Booking["pricing"];
   adminUid: string;
   adminName: string;
-}): Promise<{ bookingId: string; bookingCode: string }> {
+}): Promise<{ bookingId: string; bookingCode: string; booking: Booking }> {
   const now = Date.now();
   const bookingCode = newBookingCode();
   const email = input.email?.trim().toLowerCase() || "";
@@ -252,7 +252,9 @@ export async function createManualBooking(input: {
   };
 
   const bookingId = await createBooking(booking);
-  return { bookingId, bookingCode };
+  // The whole booking comes back, not just its id: the caller usually goes
+  // straight on to record the money and confirm the seat, and both need it.
+  return { bookingId, bookingCode, booking: { ...booking, id: bookingId } };
 }
 
 /**
