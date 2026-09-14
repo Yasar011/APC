@@ -79,6 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshUser: async () => {
         if (!auth.currentUser) return;
         await auth.currentUser.reload();
+        // reload() updates this object, but NOT the ID token — and the
+        // database rules read `auth.token.email_verified`, not this. Without
+        // forcing a new token the page unlocks while the token still says
+        // the address is unverified, and the write is refused for a reason
+        // nothing on screen can explain. Firebase would get there on its
+        // own within the hour; a student booking a seat will not wait.
+        await auth.currentUser.getIdToken(true);
         setUser(auth.currentUser);
         setEmailVerified(auth.currentUser.emailVerified);
       },

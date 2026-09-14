@@ -172,6 +172,12 @@ export default function BookPage() {
 
     setSaving(true);
     try {
+      // The rules read `email_verified` off the ID token, and a token minted
+      // before the address was verified still says false for up to an hour.
+      // Refreshing here costs one round trip and removes the window in
+      // which a verified student is refused for being unverified.
+      await user.getIdToken(true);
+
       const now = Date.now();
       const code = newBookingCode();
       const draft: Omit<Booking, "id"> = {
@@ -208,13 +214,21 @@ export default function BookPage() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Could not save your booking.";
-      // A rules rejection here almost always means the ID was claimed
-      // between the check and the write.
-      toast.error(
-        message.toLowerCase().includes("permission")
-          ? `Couldn't book ${traveller.niftId} — that NIFT ID may already have a seat.`
-          : message
-      );
+
+      // A rules rejection has more than one cause, and guessing at it sent
+      // students a message about their NIFT ID when the real problem was a
+      // stale token. Ask the database which it was rather than assuming.
+      if (message.toLowerCase().includes("permission")) {
+        const taken = await isNiftIdTaken(traveller.niftId).catch(() => false);
+        toast.error(
+          taken
+            ? `${traveller.niftId} already has a seat. One seat per NIFT ID — message the trip leads if that's wrong.`
+            : "Your sign-in needs refreshing. Sign out, sign back in, and try again."
+        );
+        return;
+      }
+
+      toast.error(message);
     } finally {
       setSaving(false);
     }
