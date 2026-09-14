@@ -15,21 +15,21 @@ import { rupees } from "@/lib/utils";
 /**
  * Paying for a seat, in as many transfers as the bank insists on.
  *
- * Two separate ₹2,000 caps bite here, and they have different fixes:
+ * Two separate ₹2,000 caps bite here:
  *
- *  - **Paying from a QR picked out of the gallery** is capped by the apps
- *    themselves. On a phone this is the one students actually hit, because
- *    you cannot scan a QR that is on the screen you are looking at — so
- *    they screenshot it, open it from the gallery, and run straight into
- *    the cap. The fix is the app buttons, which carry the amount across
- *    without a QR at all, which is why they sit above the QR on mobile.
+ *  - **A QR picked out of the gallery** is capped by the apps themselves.
+ *    On a phone this is the one students hit, because you cannot scan a QR
+ *    on the screen you are holding — so they screenshot it, open it from
+ *    the gallery, and run into the cap. The way past it is to scan the code
+ *    from a second screen, which is what the panel now tells them to do.
  *  - **The first payment to an ID you have never paid** is capped by some
  *    banks for 24 hours. Nothing avoids that one.
  *
- * So the form is built around paying in parts rather than treating it as an
- * error: pay what goes through, upload it, and the panel comes back asking
- * for the balance with the QR and buttons regenerated for the remaining
- * amount, so the second transfer is exact and needs no mental arithmetic.
+ * So the form is built around paying in parts rather than treating either
+ * as an error: pay what goes through, upload it, and the panel comes back
+ * asking for the balance with the QR regenerated for the remaining amount,
+ * so the second transfer is exact and needs no mental arithmetic. A bank
+ * transfer, which has no such ceiling, sits under it for anyone stuck.
  *
  * The amount is typed by the student and checked by an admin against the
  * screenshot. It is not trusted — it is a claim, made legible.
