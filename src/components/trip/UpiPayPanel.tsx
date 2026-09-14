@@ -167,6 +167,17 @@ export function UpiPayPanel({
               </a>
             ))}
           </div>
+          {/* Google Pay puts a grey sheet over the Pay button saying you
+              can pay "up to ₹2,000 with QR codes via gallery". It is a
+              notice, not a refusal - the payment above it is already
+              loaded - but it reads exactly like an error, and it covers
+              the button, so people stop there and report it as broken. */}
+          <p className="mt-2 rounded-lg bg-neutral-50 px-3 py-2 text-center text-xs text-neutral-600">
+            If a grey box says{" "}
+            <em>&ldquo;you can pay up to ₹2,000 with QR codes via gallery&rdquo;</em>
+            , that&apos;s not an error — tap <strong>Dismiss</strong>, then Pay.
+          </p>
+
           {/* The app opening and then refusing is a different failure from
               the app not opening, and it has different causes - so it gets
               its own line rather than being folded into "nothing opened". */}
