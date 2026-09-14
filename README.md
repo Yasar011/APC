@@ -308,6 +308,32 @@ adds up correctly and the shortfall banner still works.
 phone or booking code all match. A search ignores the status chips, because hunting for a
 booking you can't see due to the wrong filter is the exact frustration it exists to remove.
 
+### Paying: QR, or a bank transfer
+
+**The QR is the only UPI path.** There were per-app buttons — Google Pay, PhonePe, Paytm —
+built on deep links. They were removed. Deep links broke twice in different ways (Chrome
+refusing custom schemes, then apps showing their own restriction notices), each failure
+looked to a student like the site was broken, and none of it was fixable from here. A QR
+that always renders beats four buttons that sometimes work.
+
+The QR carries the amount and the booking code, so there is nothing to type.
+
+> **On a phone you cannot scan a QR that is on the screen you are holding.** The obvious
+> workaround — screenshot it, open it from the gallery — is exactly the path apps cap at
+> ₹2,000. So the page says plainly: open it on a **laptop**, or on a friend's phone, and
+> scan from there.
+
+**Bank transfer** is the fallback, folded away under the QR. It has no ₹2,000 ceiling, so it
+is the answer when UPI has refused someone for a reason the club cannot fix — a daily limit,
+an outage, a first payment to an unknown payee. The booking code goes in the remarks, since
+a transfer carries no code of its own and otherwise the money is matched by amount alone.
+
+Set it in **Trip settings → Bank transfer**. Blank fields hide the option entirely.
+
+> The details live in the database, not in the code. An account number is not a secret — you
+> hand it out to be paid — but this repository is public, and anything committed to it is in
+> its history permanently.
+
 ### When a UPI ID stops working
 
 Under the QR there is always a **"Tell the trip leads it's not working"** WhatsApp link,
@@ -319,42 +345,6 @@ immediately.
 > This block used to be hidden unless two or more accounts existed, which meant a club
 > running a single UPI ID — the normal case at the start — had no way to report anything at
 > all, and a student whose payment kept failing simply gave up. It is now always shown.
-
-### The two ₹2,000 caps
-
-They have different causes and different fixes, and it matters which one a student hit:
-
-- **A QR opened from the gallery is capped at ₹2,000 by the apps themselves.** This is the
-  one students actually hit on a phone, because you cannot scan a QR that is on the screen
-  you are looking at — so they screenshot it, open it from the gallery, and run straight
-  into the cap. **The app buttons avoid it entirely**, which is why they sit *above* the QR
-  on mobile and the QR carries a "scan this from another device" warning.
-- **The first payment to an ID you have never paid** is capped by some banks for 24 hours.
-  Nothing avoids this one — pay ₹2,000, upload it, pay the balance.
-
-### Opening a UPI app directly
-
-Under the QR, on a phone, there are buttons for **Google Pay, PhonePe, Paytm** and any UPI
-app. Each opens that app with the amount and booking code already filled in.
-
-**These are not plain `tez://` links, and that matters.** A raw custom scheme in an
-`<a href>` is refused by Chrome on Android with `ERR_UNKNOWN_URL_SCHEME` — an error page,
-which is worse than no button: the student concludes the site is broken rather than that an
-app is missing.
-
-Android's supported form is an `intent://` URI naming the package, with a
-`browser_fallback_url` so tapping "PhonePe" without PhonePe installed lands back on the
-payment page instead of on an error. **iOS is the opposite** — no `intent://` at all, custom
-schemes are how apps open there — so the link is built per platform, detected after mount
-(the server has no user agent, and shipping Android links to an iPhone is how this broke in
-the first place).
-
-Under the buttons is **"Nothing opened? Copy the UPI ID and pay manually"** — no scheme, no
-app, nothing to go wrong. When a deep link fails that is what actually gets someone paid, so
-it is a real button rather than a line of small print.
-
-On a laptop the buttons are hidden entirely and the QR carries a "scan this with your phone"
-line instead.
 
 ### Email verification
 
@@ -462,7 +452,7 @@ Everything under `jawaiTrip`:
 
 | Key | What's in it |
 |---|---|
-| `settings` | Price, dates, seats, UPI accounts, trip lead contact, WhatsApp group link. World-readable. |
+| `settings` | Price, dates, seats, UPI accounts, bank details, trip lead contact, WhatsApp group link. World-readable. |
 | `finance` | What a seat costs the club. **Admin-only** — never world-readable. |
 | `bookings/$id` | Booker, travellers, pricing breakdown, payment proof, status. |
 | `bookingsByUser/$uid/$id` | "Does this person already have a booking?" |

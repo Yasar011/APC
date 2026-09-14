@@ -4,14 +4,7 @@ import { useEffect, useState } from "react";
 import { Copy, MessageCircle, RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/primitives";
-import {
-  UpiPlatform,
-  activeUpiAccounts,
-  detectUpiPlatform,
-  nextUpiAccount,
-  upiAppLinks,
-  upiPayUri,
-} from "@/lib/upi";
+import { activeUpiAccounts, nextUpiAccount, upiPayUri } from "@/lib/upi";
 import { qrDataUrl } from "@/lib/qr";
 import { contactPhone } from "@/lib/contact";
 import { TripSettings, UpiAccount } from "@/lib/types";
@@ -44,20 +37,7 @@ export function UpiPayPanel({
   const [qr, setQr] = useState<string | null>(null);
   const accounts = activeUpiAccounts(settings);
 
-  // Read after mount: the server has no user agent, and rendering Android
-  // links into an iPhone (or the reverse) is exactly how these buttons
-  // ended up showing an error page.
-  const [platform, setPlatform] = useState<UpiPlatform>("other");
-  useEffect(() => setPlatform(detectUpiPlatform()), []);
-
   const payUri = account ? upiPayUri(account, amount, note) : null;
-  const appLinks = account
-    ? upiAppLinks(account, amount, note, {
-        platform,
-        fallbackUrl:
-          typeof window === "undefined" ? undefined : window.location.href,
-      })
-    : [];
 
   // Carries the booking code and the failing ID, so a lead can act on the
   // message without a round of "which one? whose booking?".
@@ -146,68 +126,6 @@ export function UpiPayPanel({
         )}
       </div>
 
-      {/* One tap straight into the app they use, amount already filled in.
-          Android only - iOS ignores these schemes, which is why the QR
-          above is always shown and never hidden behind a button. */}
-      {appLinks.length > 0 && (
-        <div className="sm:hidden">
-          <p className="mb-2 text-center text-xs font-medium text-neutral-700">
-            Tap your app — the amount goes straight across
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {appLinks.map((app) => (
-              <a
-                key={app.name}
-                href={app.href}
-                className="flex items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: app.tint }}
-              >
-                <Smartphone className="h-4 w-4" />
-                {app.name}
-              </a>
-            ))}
-          </div>
-          {/* Google Pay puts a grey sheet over the Pay button saying you
-              can pay "up to ₹2,000 with QR codes via gallery". It is a
-              notice, not a refusal - the payment above it is already
-              loaded - but it reads exactly like an error, and it covers
-              the button, so people stop there and report it as broken. */}
-          <p className="mt-2 rounded-lg bg-neutral-50 px-3 py-2 text-center text-xs text-neutral-600">
-            If a grey box says{" "}
-            <em>&ldquo;you can pay up to ₹2,000 with QR codes via gallery&rdquo;</em>
-            , that&apos;s not an error — tap <strong>Dismiss</strong>, then Pay.
-          </p>
-
-          {/* The app opening and then refusing is a different failure from
-              the app not opening, and it has different causes - so it gets
-              its own line rather than being folded into "nothing opened". */}
-          <p className="mt-2 text-center text-xs text-neutral-500">
-            App opened but refused the payment? You can&apos;t send money to
-            your own UPI ID — if this ID is yours, pay from someone
-            else&apos;s account.
-          </p>
-
-          {/* The path with no scheme, no app and nothing to go wrong. When
-              a deep link fails, this is what actually gets someone paid. */}
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(account.upiId);
-              toast.success("UPI ID copied", {
-                description: `Open any UPI app, paste it, and send ${rupees(
-                  amount
-                )}.`,
-                duration: 7000,
-              });
-            }}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 px-3 py-2.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            Nothing opened? Copy the UPI ID and pay manually
-          </button>
-        </div>
-      )}
-
       {/* A pasted image wins if one is set, otherwise the generated QR. */}
       {(account.qrUrl || qr) && (
         <div className="flex flex-col items-center">
@@ -218,20 +136,25 @@ export function UpiPayPanel({
             className="h-56 w-56 rounded-xl border border-neutral-200 bg-white object-contain p-2"
           />
           {!account.qrUrl && (
-            <>
-              <p className="mt-2 hidden text-center text-xs text-neutral-500 sm:block">
-                <strong>On a laptop?</strong> Open GPay, PhonePe or any UPI app on
-                your phone, scan this, and pay. The amount is already filled in.
+            <div className="mt-3 w-full space-y-2">
+              {/* You cannot scan a QR that is on the screen you are holding,
+                  and the way round it - screenshot, open from gallery - is
+                  exactly the path the apps cap at ₹2,000. So the instruction
+                  has to be "put this on a second screen", said plainly. */}
+              <p className="text-center text-sm font-medium text-neutral-800">
+                Scan this with your UPI app
               </p>
-              {/* Saving this and picking it from the gallery is what runs
-                  into the apps' own ₹2,000 cap on gallery QRs - and on a
-                  phone you cannot scan your own screen, so that is exactly
-                  what a student would otherwise do. */}
-              <p className="mt-2 text-center text-xs text-neutral-500 sm:hidden">
-                Scan this from <em>another</em> device. Don&apos;t screenshot it
-                and open it from your gallery — apps cap that at ₹2,000.
+              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-xs leading-relaxed text-neutral-600">
+                <strong>On your phone?</strong> You can&apos;t scan a code
+                that&apos;s on the screen you&apos;re holding. Open this page on
+                a <strong>laptop</strong> — or on a friend&apos;s phone — and
+                scan it from there.
               </p>
-            </>
+              <p className="text-center text-xs text-neutral-500">
+                The amount and your booking code are already in the code —
+                nothing to type.
+              </p>
+            </div>
           )}
         </div>
       )}

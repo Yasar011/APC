@@ -47,6 +47,18 @@ export interface TripSettings {
   upiPayeeName?: string;
   /** @deprecated See upiId. */
   paymentQrUrl?: string | null;
+  /**
+   * Bank transfer details, for anyone whose UPI won't cooperate.
+   *
+   * Kept here rather than in the code because `settings` lives in the
+   * database while the repository is public — an account number committed
+   * to git is in its history permanently, and a repo is a bad place for
+   * one even though it is not a secret.
+   */
+  bankAccountName: string;
+  bankAccountNumber: string;
+  bankIfsc: string;
+  bankName: string;
   contactName: string;
   /** e.g. "APC President" - shown next to the name. */
   contactRole: string;

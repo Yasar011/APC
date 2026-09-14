@@ -5,6 +5,7 @@ import { Check, CircleAlert, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Field, Input } from "@/components/ui/primitives";
 import { UpiPayPanel } from "@/components/trip/UpiPayPanel";
+import { BankTransferPanel } from "@/components/trip/BankTransferPanel";
 import { addPayment, setBookingPayee } from "@/lib/trip";
 import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { newPaymentId, paymentState } from "@/lib/payments";
@@ -113,22 +114,17 @@ export function PaymentForm({
             If your app won&apos;t send the full {rupees(state.due)}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-amber-900">
-            <strong>
-              Don&apos;t screenshot the QR and open it from your gallery.
-            </strong>{" "}
-            Paying from a saved QR image is capped at ₹2,000 by the apps
-            themselves — that&apos;s the message you&apos;ll see. On a phone, use
-            the <strong>Google Pay / PhonePe / Paytm buttons</strong> below
-            instead: they carry the amount straight across with no cap. Or copy
-            the UPI ID and pay it as a contact.
+            UPI often won&apos;t move more than <strong>₹2,000</strong> in one
+            payment — a saved QR opened from your gallery is capped there, and
+            so is the first payment to an ID you&apos;ve never paid. That&apos;s
+            normal and nothing is wrong with your account.
           </p>
           <p className="mt-2 text-xs leading-relaxed text-amber-900">
-            Some banks also cap the <strong>first</strong> payment to an ID you
-            have never paid, often at ₹2,000 for 24 hours. If you hit either
-            limit:{" "}
-            <strong>send ₹2,000, upload it below, then pay the rest</strong> —
-            both go on this same booking and your seat is held once the total is
-            in.
+            Two ways through, both fine:{" "}
+            <strong>send ₹2,000, upload it, then pay the rest</strong> — both go
+            on this same booking — or use the{" "}
+            <strong>bank transfer</strong> option below, which has no such
+            limit.
           </p>
         </div>
       )}
@@ -176,6 +172,12 @@ export function PaymentForm({
           onPayeeChange(next);
           await setBookingPayee(booking.id, next.upiId, next.payeeName);
         }}
+      />
+
+      <BankTransferPanel
+        settings={settings}
+        amount={state.outstanding || state.due}
+        note={booking.bookingCode}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">

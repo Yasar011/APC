@@ -806,6 +806,44 @@ function SettingsModal({
           </div>
         </div>
 
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:col-span-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+            Bank transfer
+          </p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Shown to students as a fallback when UPI refuses them — a bank
+            transfer has no ₹2,000 ceiling. Leave blank to hide the option.
+          </p>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label="Account name">
+              <Input
+                value={form.bankAccountName ?? ""}
+                onChange={(e) => set("bankAccountName", e.target.value)}
+                placeholder="Yasar CH"
+              />
+            </Field>
+            <Field label="Account number">
+              <Input
+                value={form.bankAccountNumber ?? ""}
+                onChange={(e) => set("bankAccountNumber", e.target.value)}
+              />
+            </Field>
+            <Field label="IFSC">
+              <Input
+                value={form.bankIfsc ?? ""}
+                onChange={(e) => set("bankIfsc", e.target.value.toUpperCase())}
+              />
+            </Field>
+            <Field label="Bank name" hint="Optional.">
+              <Input
+                value={form.bankName ?? ""}
+                onChange={(e) => set("bankName", e.target.value)}
+              />
+            </Field>
+          </div>
+        </div>
+
         <Field label="Trip lead name">
           <Input
             value={form.contactName}
