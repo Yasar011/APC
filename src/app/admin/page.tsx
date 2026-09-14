@@ -256,22 +256,41 @@ export default function AdminBookingsPage() {
   const totalDiscount = books.reduce((sum, item) => sum + item.discount, 0);
   const netProfit = books.reduce((sum, item) => sum + item.netProfit, 0);
 
-  // Which UPI ID the money actually landed on. Counted from every booking
-  // that has been paid, not just confirmed ones, so an ID that has stopped
-  // accepting payments shows up before anyone has verified them.
+  /**
+   * Where the money actually landed, counted transfer by transfer.
+   *
+   * It used to add each booking's whole price to whichever UPI ID the
+   * booking named. That was wrong twice over once a seat could be paid in
+   * parts and by more than one method: a booking settled ₹2,000 by UPI and
+   * ₹99 in cash put the full ₹2,099 against the UPI ID, and a booking paid
+   * entirely by bank transfer was still filed under a UPI ID it never
+   * touched. The totals stopped matching the bank, which is the one thing
+   * this table exists to do.
+   *
+   * Unverified payments are counted too, so an ID that has quietly stopped
+   * accepting money shows up before anyone gets round to verifying.
+   */
   const paid = bookings.filter(
     (item) => item.status === "PENDING_VERIFICATION" || item.status === "CONFIRMED"
   );
   const byUpi = new Map<string, { count: number; amount: number; name: string }>();
   for (const item of paid) {
-    const key = item.payeeUpiId ?? "(not recorded)";
-    const entry = byUpi.get(key) ?? { count: 0, amount: 0, name: item.payeeName ?? "" };
-    entry.count += 1;
-    entry.amount += item.pricing.total;
-    if (!entry.name && item.payeeName) entry.name = item.payeeName;
-    byUpi.set(key, entry);
+    for (const transfer of paymentState(withLegacyPayment(item)).transfers) {
+      const kind = paymentMethod(transfer);
+      const key =
+        kind === "UPI"
+          ? transfer.upiId ?? item.payeeUpiId ?? "(not recorded)"
+          : PAYMENT_METHOD_LABELS[kind];
+      const entry = byUpi.get(key) ?? { count: 0, amount: 0, name: "" };
+      entry.count += 1;
+      entry.amount += transfer.amount;
+      if (!entry.name && kind === "UPI" && item.payeeName) {
+        entry.name = item.payeeName;
+      }
+      byUpi.set(key, entry);
+    }
   }
-  const upiRows = [...byUpi.entries()].sort((a, b) => b[1].count - a[1].count);
+  const upiRows = [...byUpi.entries()].sort((a, b) => b[1].amount - a[1].amount);
   const configuredUpis = upiAccounts(settings);
 
   return (
@@ -380,19 +399,29 @@ export default function AdminBookingsPage() {
               <table className="w-full text-sm">
                 <thead className="text-left text-xs uppercase tracking-wider text-neutral-500">
                   <tr>
-                    <th className="pb-2 pr-4">UPI ID</th>
-                    <th className="pb-2 pr-4">Payments</th>
+                    <th className="pb-2 pr-4">Paid into</th>
+                    <th className="pb-2 pr-4">Transfers</th>
                     <th className="pb-2 pr-4">Amount</th>
                     <th className="pb-2">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {upiRows.map(([upiId, row]) => {
+                    // Cash and bank rows are not UPI accounts, so looking
+                    // them up in the account list would brand real money as
+                    // "no longer listed".
+                    const isMethodRow = (
+                      Object.values(PAYMENT_METHOD_LABELS) as string[]
+                    ).includes(upiId);
                     const configured = configuredUpis.find((a) => a.upiId === upiId);
                     return (
                       <tr key={upiId}>
                         <td className="py-2.5 pr-4">
-                          <p className="font-mono text-xs font-medium text-neutral-900">
+                          <p
+                            className={`text-xs font-medium text-neutral-900 ${
+                              isMethodRow ? "" : "font-mono"
+                            }`}
+                          >
                             {upiId}
                           </p>
                           {row.name && (
@@ -402,7 +431,11 @@ export default function AdminBookingsPage() {
                         <td className="py-2.5 pr-4 tabular-nums">{row.count}</td>
                         <td className="py-2.5 pr-4 tabular-nums">{rupees(row.amount)}</td>
                         <td className="py-2.5">
-                          {!configured ? (
+                          {isMethodRow ? (
+                            <Badge className="bg-neutral-100 text-neutral-600">
+                              Not UPI
+                            </Badge>
+                          ) : !configured ? (
                             <Badge className="bg-neutral-200 text-neutral-600">
                               No longer listed
                             </Badge>

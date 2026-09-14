@@ -196,9 +196,12 @@ It was Firebase Storage before this, which needed a bucket provisioning and its 
 file; when either was missing the upload didn't fail, it hung. Every network wait now has a
 timeout, so a stall surfaces as a message rather than a button that spins forever.
 
-**Every booking stores `payeeUpiId`**, so `/admin` shows a **Payments by UPI ID** table:
-how many paid into each account and how much, with accounts flagged as active, paused, or no
-longer listed. Each booking's verification page names the ID to check the screenshot
+**`/admin` shows a "Payments by UPI ID" table**, counted **transfer by transfer** rather
+than booking by booking. That distinction is the whole point once a seat can be paid in
+parts and by more than one method: a booking settled ₹2,000 by UPI and ₹99 in cash used to
+put the full ₹2,099 against the UPI ID, and a booking paid entirely by bank transfer was
+filed under a UPI ID it never touched. Cash and bank get their own rows, marked **Not UPI**.
+Accounts are flagged active, paused, or no longer listed. Each booking's verification page names the ID to check the screenshot
 against.
 
 Pausing an account stops new students being sent to it but leaves every past booking's

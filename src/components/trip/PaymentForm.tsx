@@ -3,13 +3,19 @@
 import { useRef, useState } from "react";
 import { Check, CircleAlert, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Field, Input } from "@/components/ui/primitives";
+import { Button, Field, Input, Select } from "@/components/ui/primitives";
 import { UpiPayPanel } from "@/components/trip/UpiPayPanel";
 import { BankTransferPanel } from "@/components/trip/BankTransferPanel";
 import { addPayment, setBookingPayee } from "@/lib/trip";
 import { uploadScreenshot, validateScreenshot } from "@/lib/storage";
 import { newPaymentId, paymentState } from "@/lib/payments";
-import { Booking, PaymentProof, TripSettings, UpiAccount } from "@/lib/types";
+import {
+  Booking,
+  PaymentMethod,
+  PaymentProof,
+  TripSettings,
+  UpiAccount,
+} from "@/lib/types";
 import { rupees } from "@/lib/utils";
 
 /**
@@ -50,6 +56,11 @@ export function PaymentForm({
   const state = paymentState(booking);
   const [amount, setAmount] = useState(String(state.outstanding || state.due));
   const [reference, setReference] = useState("");
+  // Which way the money actually moved. Without this a NEFT transfer gets
+  // filed against a UPI ID it never touched, and the admin's "payments by
+  // UPI ID" totals stop matching the bank.
+  const [method, setMethod] = useState<PaymentMethod>("UPI");
+  const byBank = method === "BANK";
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +70,7 @@ export function PaymentForm({
 
   const missing = [
     typed <= 0 && "how much you paid",
-    !reference.trim() && "the UPI reference number",
+    !reference.trim() && "the reference number",
     !file && "a screenshot",
   ].filter(Boolean) as string[];
 
@@ -76,8 +87,10 @@ export function PaymentForm({
         url,
         amount: typed,
         reference: reference.trim(),
-        upiId: payee?.upiId ?? booking.payeeUpiId ?? null,
+        // Only a UPI payment belongs against a UPI ID.
+        upiId: byBank ? null : payee?.upiId ?? booking.payeeUpiId ?? null,
         at: Date.now(),
+        method,
       };
       await addPayment(booking.id, payment);
 
@@ -180,6 +193,16 @@ export function PaymentForm({
         note={booking.bookingCode}
       />
 
+      <Field label="How did you pay?" required>
+        <Select
+          value={method}
+          onChange={(event) => setMethod(event.target.value as PaymentMethod)}
+        >
+          <option value="UPI">UPI — scanned the QR above</option>
+          <option value="BANK">Bank transfer — NEFT / IMPS</option>
+        </Select>
+      </Field>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="How much you paid"
@@ -195,9 +218,13 @@ export function PaymentForm({
           />
         </Field>
         <Field
-          label="UPI reference number"
+          label={byBank ? "Transaction reference" : "UPI reference number"}
           required
-          hint="The transaction or UTR number your app shows."
+          hint={
+            byBank
+              ? "The UTR or reference your bank shows for the transfer."
+              : "The transaction or UTR number your app shows."
+          }
         >
           <Input
             value={reference}
