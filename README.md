@@ -337,12 +337,24 @@ They have different causes and different fixes, and it matters which one a stude
 Under the QR, on a phone, there are buttons for **Google Pay, PhonePe, Paytm** and any UPI
 app. Each opens that app with the amount and booking code already filled in.
 
-On a laptop the QR carries a "scan this with your phone" line instead — the buttons are
-Android-only and would be dead ends on a desktop.
+**These are not plain `tez://` links, and that matters.** A raw custom scheme in an
+`<a href>` is refused by Chrome on Android with `ERR_UNKNOWN_URL_SCHEME` — an error page,
+which is worse than no button: the student concludes the site is broken rather than that an
+app is missing.
 
-These are Android URL schemes (`tez://`, `phonepe://`, `paytmmp://`). **iOS mostly ignores
-them**, which is why the QR is always on screen and never hidden behind a button, and why
-there's a "Nothing opened? Scan the QR instead" line under them.
+Android's supported form is an `intent://` URI naming the package, with a
+`browser_fallback_url` so tapping "PhonePe" without PhonePe installed lands back on the
+payment page instead of on an error. **iOS is the opposite** — no `intent://` at all, custom
+schemes are how apps open there — so the link is built per platform, detected after mount
+(the server has no user agent, and shipping Android links to an iPhone is how this broke in
+the first place).
+
+Under the buttons is **"Nothing opened? Copy the UPI ID and pay manually"** — no scheme, no
+app, nothing to go wrong. When a deep link fails that is what actually gets someone paid, so
+it is a real button rather than a line of small print.
+
+On a laptop the buttons are hidden entirely and the QR carries a "scan this with your phone"
+line instead.
 
 ### Email verification
 

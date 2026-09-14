@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { Copy, MessageCircle, RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/primitives";
-import { activeUpiAccounts, nextUpiAccount, upiAppLinks, upiPayUri } from "@/lib/upi";
+import {
+  UpiPlatform,
+  activeUpiAccounts,
+  detectUpiPlatform,
+  nextUpiAccount,
+  upiAppLinks,
+  upiPayUri,
+} from "@/lib/upi";
 import { qrDataUrl } from "@/lib/qr";
 import { contactPhone } from "@/lib/contact";
 import { TripSettings, UpiAccount } from "@/lib/types";
@@ -37,8 +44,20 @@ export function UpiPayPanel({
   const [qr, setQr] = useState<string | null>(null);
   const accounts = activeUpiAccounts(settings);
 
+  // Read after mount: the server has no user agent, and rendering Android
+  // links into an iPhone (or the reverse) is exactly how these buttons
+  // ended up showing an error page.
+  const [platform, setPlatform] = useState<UpiPlatform>("other");
+  useEffect(() => setPlatform(detectUpiPlatform()), []);
+
   const payUri = account ? upiPayUri(account, amount, note) : null;
-  const appLinks = account ? upiAppLinks(account, amount, note) : [];
+  const appLinks = account
+    ? upiAppLinks(account, amount, note, {
+        platform,
+        fallbackUrl:
+          typeof window === "undefined" ? undefined : window.location.href,
+      })
+    : [];
 
   // Carries the booking code and the failing ID, so a lead can act on the
   // message without a round of "which one? whose booking?".
@@ -148,9 +167,24 @@ export function UpiPayPanel({
               </a>
             ))}
           </div>
-          <p className="mt-2 text-center text-xs text-neutral-500">
-            Nothing opened? Use the QR below, or copy the UPI ID above.
-          </p>
+          {/* The path with no scheme, no app and nothing to go wrong. When
+              a deep link fails, this is what actually gets someone paid. */}
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard?.writeText(account.upiId);
+              toast.success("UPI ID copied", {
+                description: `Open any UPI app, paste it, and send ${rupees(
+                  amount
+                )}.`,
+                duration: 7000,
+              });
+            }}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 px-3 py-2.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Nothing opened? Copy the UPI ID and pay manually
+          </button>
         </div>
       )}
 
