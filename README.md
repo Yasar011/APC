@@ -308,6 +308,30 @@ adds up correctly and the shortfall banner still works.
 phone or booking code all match. A search ignores the status chips, because hunting for a
 booking you can't see due to the wrong filter is the exact frustration it exists to remove.
 
+### When a UPI ID stops working
+
+Under the QR there is always a **"Tell the trip leads it's not working"** WhatsApp link,
+pre-written with the booking code, the UPI ID shown and the amount — so a lead can act on it
+without a round of "which one? whose booking?". If a second account is configured, a **"Use
+a different UPI ID"** button sits beside it and the switch is written to the booking
+immediately.
+
+> This block used to be hidden unless two or more accounts existed, which meant a club
+> running a single UPI ID — the normal case at the start — had no way to report anything at
+> all, and a student whose payment kept failing simply gave up. It is now always shown.
+
+### The two ₹2,000 caps
+
+They have different causes and different fixes, and it matters which one a student hit:
+
+- **A QR opened from the gallery is capped at ₹2,000 by the apps themselves.** This is the
+  one students actually hit on a phone, because you cannot scan a QR that is on the screen
+  you are looking at — so they screenshot it, open it from the gallery, and run straight
+  into the cap. **The app buttons avoid it entirely**, which is why they sit *above* the QR
+  on mobile and the QR carries a "scan this from another device" warning.
+- **The first payment to an ID you have never paid** is capped by some banks for 24 hours.
+  Nothing avoids this one — pay ₹2,000, upload it, pay the balance.
+
 ### Opening a UPI app directly
 
 Under the QR, on a phone, there are buttons for **Google Pay, PhonePe, Paytm** and any UPI
@@ -322,6 +346,15 @@ there's a "Nothing opened? Scan the QR instead" line under them.
 
 ### Email verification
 
+**Booking is gated on it.** The form on `/book` does not render until the address is
+verified, and the database rules refuse to create a booking unless
+`auth.token.email_verified` is true — so it is a real gate, not a hidden button. The ticket
+is emailed; an unverified address is a seat that gets paid for and then never reaches
+anyone, and by then the money has moved and it is an argument rather than an inconvenience.
+
+Admins are exempt in the rules, so recording a booking on someone's behalf still works.
+
+
 Signing up sends a Firebase verification email, and an amber banner nags until the link is
 clicked. The ticket is emailed, so an address nobody has proved is reachable is a seat that
 quietly never gets its confirmation.
@@ -330,9 +363,6 @@ quietly never gets its confirmation.
 automated mail to a student address lands there often enough that "I never got it" nearly
 always means "I didn't look there". It's on the banner, on the re-send toast, and on the
 "still not verified" message.
-
-The banner is a nudge, not a gate — an unverified student can still book, because a bounced
-verification email is a worse reason to lose a seat than it is to chase an address.
 
 ### WhatsApp group
 

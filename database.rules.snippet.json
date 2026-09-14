@@ -47,7 +47,7 @@
       ".read": "auth != null && (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin')",
       "$bookingId": {
         ".read": "auth != null && (data.child('bookerUid').val() === auth.uid || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
-        ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('bookerUid').val() === auth.uid && auth.token.email_verified === true) || (data.exists() && data.child('bookerUid').val() === auth.uid && data.child('status').val() !== 'CONFIRMED') || (auth.uid === 'kGmSLYoXlUgrdAfKogkfzmPWrrL2' || root.child('roles').child(auth.uid).val() === 'admin'))",
         ".validate": "newData.hasChildren(['bookerUid', 'niftId', 'seats', 'status', 'travellers', 'pricing', 'bookingCode', 'createdAt'])",
         "bookerUid": {
           ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"

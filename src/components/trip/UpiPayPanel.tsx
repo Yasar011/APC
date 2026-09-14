@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, RefreshCw, Smartphone } from "lucide-react";
+import { Copy, MessageCircle, RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/primitives";
 import { activeUpiAccounts, nextUpiAccount, upiAppLinks, upiPayUri } from "@/lib/upi";
 import { qrDataUrl } from "@/lib/qr";
+import { contactPhone } from "@/lib/contact";
 import { TripSettings, UpiAccount } from "@/lib/types";
 import { rupees } from "@/lib/utils";
 
@@ -38,6 +39,22 @@ export function UpiPayPanel({
 
   const payUri = account ? upiPayUri(account, amount, note) : null;
   const appLinks = account ? upiAppLinks(account, amount, note) : [];
+
+  // Carries the booking code and the failing ID, so a lead can act on the
+  // message without a round of "which one? whose booking?".
+  const reportPhone = contactPhone(settings).replace(/\D/g, "");
+  const reportHref = `https://wa.me/${
+    reportPhone.length > 10 ? reportPhone : `91${reportPhone}`
+  }?text=${encodeURIComponent(
+    [
+      `Hi! The UPI ID isn't accepting my payment for the Jawai trip.`,
+      note ? `Booking: ${note}` : "",
+      account ? `UPI ID shown: ${account.upiId}` : "",
+      `Amount: ₹${amount}`,
+    ]
+      .filter(Boolean)
+      .join("\n")
+  )}`;
 
   // The QR is generated from the payment link rather than uploaded, so the
   // amount is always right and there is no image to keep in sync.
@@ -110,36 +127,13 @@ export function UpiPayPanel({
         )}
       </div>
 
-      {/* A pasted image wins if one is set, otherwise the generated QR. */}
-      {(account.qrUrl || qr) && (
-        <div className="flex flex-col items-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={account.qrUrl || qr || ""}
-            alt={`UPI QR code for ${account.upiId}`}
-            className="h-56 w-56 rounded-xl border border-neutral-200 bg-white object-contain p-2"
-          />
-          {!account.qrUrl && (
-            <>
-              <p className="mt-2 hidden text-center text-xs text-neutral-500 sm:block">
-                <strong>On a laptop?</strong> Open GPay, PhonePe or any UPI app on
-                your phone, scan this, and pay. The amount is already filled in.
-              </p>
-              <p className="mt-2 text-center text-xs text-neutral-500 sm:hidden">
-                Scan with any UPI app — the amount is already filled in.
-              </p>
-            </>
-          )}
-        </div>
-      )}
-
       {/* One tap straight into the app they use, amount already filled in.
           Android only - iOS ignores these schemes, which is why the QR
           above is always shown and never hidden behind a button. */}
       {appLinks.length > 0 && (
         <div className="sm:hidden">
-          <p className="mb-2 text-center text-xs text-neutral-500">
-            Or open your app directly
+          <p className="mb-2 text-center text-xs font-medium text-neutral-700">
+            Tap your app — the amount goes straight across
           </p>
           <div className="grid grid-cols-2 gap-2">
             {appLinks.map((app) => (
@@ -155,8 +149,36 @@ export function UpiPayPanel({
             ))}
           </div>
           <p className="mt-2 text-center text-xs text-neutral-500">
-            Nothing opened? Scan the QR above instead.
+            Nothing opened? Use the QR below, or copy the UPI ID above.
           </p>
+        </div>
+      )}
+
+      {/* A pasted image wins if one is set, otherwise the generated QR. */}
+      {(account.qrUrl || qr) && (
+        <div className="flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={account.qrUrl || qr || ""}
+            alt={`UPI QR code for ${account.upiId}`}
+            className="h-56 w-56 rounded-xl border border-neutral-200 bg-white object-contain p-2"
+          />
+          {!account.qrUrl && (
+            <>
+              <p className="mt-2 hidden text-center text-xs text-neutral-500 sm:block">
+                <strong>On a laptop?</strong> Open GPay, PhonePe or any UPI app on
+                your phone, scan this, and pay. The amount is already filled in.
+              </p>
+              {/* Saving this and picking it from the gallery is what runs
+                  into the apps' own ₹2,000 cap on gallery QRs - and on a
+                  phone you cannot scan your own screen, so that is exactly
+                  what a student would otherwise do. */}
+              <p className="mt-2 text-center text-xs text-neutral-500 sm:hidden">
+                Scan this from <em>another</em> device. Don&apos;t screenshot it
+                and open it from your gallery — apps cap that at ₹2,000.
+              </p>
+            </>
+          )}
         </div>
       )}
 
@@ -166,24 +188,47 @@ export function UpiPayPanel({
         here — it&apos;s how we match your payment to your seat.
       </p>
 
-      {accounts.length > 1 && (
-        <div className="rounded-lg border border-dashed border-neutral-300 p-3 text-center">
-          <p className="text-xs text-neutral-500">
-            This UPI ID not accepting your payment?
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            onClick={useNextAccount}
-            loading={switching}
+      {/* Always shown. This was gated on there being a second account to
+          switch to, which meant a club running one UPI ID - the normal case
+          at the start - had no way at all to say "this isn't working", and
+          a student whose payment kept failing just gave up. Reporting it is
+          useful even when there is nothing to switch to: it is how the
+          leads find out an ID has stopped accepting money. */}
+      <div className="rounded-lg border border-dashed border-neutral-300 p-3 text-center">
+        <p className="text-xs text-neutral-500">
+          This UPI ID not accepting your payment?
+        </p>
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
+          {accounts.length > 1 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={useNextAccount}
+              loading={switching}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Use a different UPI ID
+            </Button>
+          )}
+          <a
+            href={reportHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-800 transition hover:bg-neutral-50"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Use a different UPI ID
-          </Button>
+            <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+            Tell the trip leads it&apos;s not working
+          </a>
         </div>
-      )}
+        {accounts.length <= 1 && (
+          <p className="mt-2 text-xs text-neutral-400">
+            There&apos;s only one UPI ID set up right now, so there&apos;s
+            nothing to switch to — message the leads and they&apos;ll add
+            another.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

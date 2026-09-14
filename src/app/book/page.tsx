@@ -42,7 +42,7 @@ type Step = "details" | "review" | "pay";
 
 export default function BookPage() {
   const router = useRouter();
-  const { user, loading: authLoading, displayName } = useAuth();
+  const { user, loading: authLoading, displayName, emailVerified } = useAuth();
 
   const [settings, setSettings] = useState<TripSettings>(DEFAULT_SETTINGS as TripSettings);
   const [loading, setLoading] = useState(true);
@@ -132,6 +132,11 @@ export default function BookPage() {
    * enforce it for real when the booking is written.
    */
   async function goToReview(event: React.FormEvent) {
+    if (!emailVerified) {
+      event.preventDefault();
+      toast.error("Verify your email address first — the ticket is emailed to it.");
+      return;
+    }
     event.preventDefault();
     setCheckingId(true);
     try {
@@ -261,10 +266,10 @@ export default function BookPage() {
 
   return (
     <Shell>
-      <VerifyEmailNotice />
-      <Stepper step={step} />
+      <VerifyEmailNotice blocking />
+      {emailVerified && <Stepper step={step} />}
 
-      {step === "details" && (
+      {emailVerified && step === "details" && (
         <form onSubmit={goToReview} className="space-y-6">
           <Card>
             <CardBody className="flex flex-wrap items-center justify-between gap-3">
@@ -297,7 +302,7 @@ export default function BookPage() {
         </form>
       )}
 
-      {step === "review" && (
+      {emailVerified && step === "review" && (
         <div className="space-y-6">
           <Card>
             <CardBody>
@@ -384,7 +389,7 @@ export default function BookPage() {
         </div>
       )}
 
-      {step === "pay" && bookingId && payingBooking && (
+      {emailVerified && step === "pay" && bookingId && payingBooking && (
         <div className="space-y-6">
           <Card>
             <CardBody>

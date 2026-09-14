@@ -14,12 +14,21 @@ import { rupees } from "@/lib/utils";
 /**
  * Paying for a seat, in as many transfers as the bank insists on.
  *
- * The first payment to a UPI ID you have never paid is capped — commonly
- * ₹2,000 for the first 24 hours — so a ₹2,099 seat frequently cannot go in
- * one transfer. This form is built around that rather than treating it as
- * an error: pay what goes through, upload it, and the panel comes back
- * asking for the balance with the **QR regenerated for the remaining
- * amount**, so the second transfer is exact and needs no mental arithmetic.
+ * Two separate ₹2,000 caps bite here, and they have different fixes:
+ *
+ *  - **Paying from a QR picked out of the gallery** is capped by the apps
+ *    themselves. On a phone this is the one students actually hit, because
+ *    you cannot scan a QR that is on the screen you are looking at — so
+ *    they screenshot it, open it from the gallery, and run straight into
+ *    the cap. The fix is the app buttons, which carry the amount across
+ *    without a QR at all, which is why they sit above the QR on mobile.
+ *  - **The first payment to an ID you have never paid** is capped by some
+ *    banks for 24 hours. Nothing avoids that one.
+ *
+ * So the form is built around paying in parts rather than treating it as an
+ * error: pay what goes through, upload it, and the panel comes back asking
+ * for the balance with the QR and buttons regenerated for the remaining
+ * amount, so the second transfer is exact and needs no mental arithmetic.
  *
  * The amount is typed by the student and checked by an admin against the
  * screenshot. It is not trusted — it is a claim, made legible.
@@ -104,11 +113,22 @@ export function PaymentForm({
             If your app won&apos;t send the full {rupees(state.due)}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-amber-900">
-            Most banks cap the <strong>first</strong> payment to a UPI ID you
-            haven&apos;t paid before — often at ₹2,000 for the first 24 hours.
-            That&apos;s normal and nothing is wrong with your account.
-            <strong> Send ₹2,000, upload it below, then pay the rest</strong> — both
-            go on this same booking and your seat is held once the total is in.
+            <strong>
+              Don&apos;t screenshot the QR and open it from your gallery.
+            </strong>{" "}
+            Paying from a saved QR image is capped at ₹2,000 by the apps
+            themselves — that&apos;s the message you&apos;ll see. On a phone, use
+            the <strong>Google Pay / PhonePe / Paytm buttons</strong> below
+            instead: they carry the amount straight across with no cap. Or copy
+            the UPI ID and pay it as a contact.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-amber-900">
+            Some banks also cap the <strong>first</strong> payment to an ID you
+            have never paid, often at ₹2,000 for 24 hours. If you hit either
+            limit:{" "}
+            <strong>send ₹2,000, upload it below, then pay the rest</strong> —
+            both go on this same booking and your seat is held once the total is
+            in.
           </p>
         </div>
       )}
