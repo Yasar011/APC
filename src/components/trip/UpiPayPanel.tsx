@@ -159,10 +159,12 @@ export function UpiPayPanel({
         </div>
       )}
 
+      {/* The upload instruction lives in step 2 now; all that is left to
+          say here is which ID, because paying a different one is what makes
+          a payment impossible to match to a seat. */}
       <p className="flex items-start gap-2 text-xs text-neutral-500">
         <Smartphone className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        Pay the exact amount to the ID above, then upload the screenshot. Pay the one shown
-        here — it&apos;s how we match your payment to your seat.
+        Pay the ID shown here — it&apos;s how we match your payment to your seat.
       </p>
 
       {/* Always shown. This was gated on there being a second account to
