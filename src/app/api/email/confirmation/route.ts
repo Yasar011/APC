@@ -73,7 +73,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Email isn't set up yet. Deploy the Apps Script (see apps-script/Code.gs), then set SHEETS_WEBHOOK_URL and SHEETS_WEBHOOK_SECRET.",
+          "Email isn't set up yet. Quickest: set GMAIL_USER and GMAIL_APP_PASSWORD. " +
+          "Or deploy the Apps Script (apps-script/Code.gs) to fill the sheet too. " +
+          "Either way, 'Send it on WhatsApp' works right now with no setup.",
       },
       { status: 503 }
     );

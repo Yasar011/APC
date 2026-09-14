@@ -1,4 +1,5 @@
 import "server-only";
+import { firebaseConfig } from "./firebaseConfig";
 
 /**
  * Checking who is calling an API route, without a Firebase Admin SDK.
@@ -15,14 +16,12 @@ import "server-only";
  * whole node *is* proof of admin.
  */
 
-const DB_URL =
-  process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ||
-  "https://apc-movie-default-rtdb.firebaseio.com";
+const DB_URL = firebaseConfig.databaseURL;
 
 /** Confirms the token is a real, current login on this Firebase project. */
 async function verifyIdToken(idToken: string): Promise<boolean> {
   const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseConfig.apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

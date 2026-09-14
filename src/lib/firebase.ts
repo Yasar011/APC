@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+import { firebaseConfig } from "./firebaseConfig";
 import { getStorage } from "firebase/storage";
 
 /**
@@ -17,27 +18,7 @@ import { getStorage } from "firebase/storage";
  * Environment variables still win where they are set, so a throwaway
  * Firebase project can be pointed at for testing without touching code.
  */
-const DEFAULTS = {
-  apiKey: "AIzaSyCEDUyZD20PYvHMe-CX-_n2MWRvENiggd8",
-  authDomain: "apc-movie.firebaseapp.com",
-  databaseURL: "https://apc-movie-default-rtdb.firebaseio.com",
-  projectId: "apc-movie",
-  storageBucket: "apc-movie.firebasestorage.app",
-  messagingSenderId: "849582804075",
-  appId: "1:849582804075:web:44831ccf1309b106a2b52e",
-};
-
-const config = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || DEFAULTS.apiKey,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || DEFAULTS.authDomain,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || DEFAULTS.databaseURL,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || DEFAULTS.projectId,
-  storageBucket:
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || DEFAULTS.storageBucket,
-  messagingSenderId:
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || DEFAULTS.messagingSenderId,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || DEFAULTS.appId,
-};
+const config = firebaseConfig;
 
 /**
  * True in normal use, now that the config ships with the code. Kept as a

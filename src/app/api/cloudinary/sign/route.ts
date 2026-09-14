@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { firebaseConfig } from "@/lib/firebaseConfig";
 
 /**
  * Signs a Cloudinary upload, the same way the TEDx app does.
@@ -13,7 +14,7 @@ import crypto from "crypto";
 /** Confirms the caller is signed in to this Firebase project. */
 async function verifyIdToken(idToken: string) {
   const response = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseConfig.apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
