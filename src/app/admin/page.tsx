@@ -547,7 +547,21 @@ export default function AdminBookingsPage() {
                     <td className="px-4 py-3 font-mono text-xs">{booking.bookingCode}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-neutral-900">{booking.bookerName}</p>
-                      <p className="text-xs text-neutral-500">{booking.bookerEmail}</p>
+                      {/* A seat a lead wrote down cannot reach its owner
+                          until an address is attached, so an unclaimed one
+                          says so here rather than showing a blank cell. */}
+                      {booking.bookerEmail ? (
+                        <p className="text-xs text-neutral-500">{booking.bookerEmail}</p>
+                      ) : (
+                        <p className="text-xs text-amber-700">
+                          No email yet · {booking.bookerPhone || "no phone"}
+                        </p>
+                      )}
+                      {!booking.bookerUid && (
+                        <p className="mt-0.5 text-xs text-neutral-400">
+                          Not claimed yet
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3 tabular-nums">{booking.seats}</td>
                     <td className="px-4 py-3 tabular-nums">

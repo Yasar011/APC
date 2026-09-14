@@ -42,10 +42,15 @@ export function ManualBookingModal({
 
   const pricing = quote(settings, null);
 
+  // Email is deliberately not required. A lead writing someone down at a
+  // stall has a name and a phone number and nothing else, and refusing the
+  // booking until an address turns up is how the real list ends up in a
+  // notebook. The phone is required instead — without it there is no way
+  // to reach them at all.
   const missing = [
-    !email.trim() && "their email",
     !name.trim() && "their name",
     !niftId.trim() && "their NIFT ID",
+    !phone.trim() && "their phone number",
   ].filter(Boolean) as string[];
 
   function reset() {
@@ -59,7 +64,7 @@ export function ManualBookingModal({
     if (!user || missing.length > 0) return;
 
     const cleanEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       toast.error("That doesn't look like an email address.");
       return;
     }
@@ -84,7 +89,9 @@ export function ManualBookingModal({
       });
 
       toast.success(`Booked — ${bookingCode}`, {
-        description: `${cleanEmail} takes it over when they sign in with that address.`,
+        description: cleanEmail
+          ? `${cleanEmail} takes it over when they sign in with that address.`
+          : "Add their email on the booking when you have it, so they can claim it.",
         duration: 8000,
       });
       reset();
@@ -103,25 +110,20 @@ export function ManualBookingModal({
     <Modal open={open} onClose={onClose} title="Book a seat for someone">
       <div className="space-y-4">
         <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-xs leading-relaxed text-neutral-600">
-          They sign in with this email later and the seat is offered to them —
-          then they fill in their blood group, allergies and emergency contact
-          themselves. <strong>The email has to be exact</strong>, or the seat
-          won&apos;t find them.
+          Write the seat down now with just a name, ID and phone. Add their
+          email whenever you get it — the seat is then offered to them when
+          they sign in with that address, and{" "}
+          <strong>they</strong> fill in blood group, allergies and emergency
+          contact themselves.
         </p>
-
-        <Field label="Their email" required hint="The one they'll sign in with.">
-          <Input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="name@gmail.com"
-            autoFocus
-          />
-        </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name" required>
-            <Input value={name} onChange={(event) => setName(event.target.value)} />
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoFocus
+            />
           </Field>
           <Field label="NIFT ID" required hint="One seat per ID.">
             <Input
@@ -131,11 +133,23 @@ export function ManualBookingModal({
           </Field>
         </div>
 
-        <Field label="Phone" hint="Optional — they can add it themselves.">
+        <Field label="Phone" required hint="How you reach them until there's an email.">
           <Input
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             inputMode="tel"
+          />
+        </Field>
+
+        <Field
+          label="Their email"
+          hint="Optional now — add it on the booking later and they can claim the seat."
+        >
+          <Input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="name@gmail.com"
           />
         </Field>
 

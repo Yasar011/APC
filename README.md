@@ -426,10 +426,20 @@ Students pay in person, message a lead, or never get round to the site — and a
 cannot write those down keeps the real list somewhere else, which is how a bus leaves with a
 name nobody checked.
 
-**Book for someone** on `/admin` creates a seat against a student's **email address**: name,
-NIFT ID, optional phone, and nothing else. When they sign in with that address, `/book`
-offers them the seat instead of a blank form, and **they** fill in blood group, allergies and
-emergency contact. A lead guessing at a blood group is worse than a blank.
+**Book for someone** on `/admin` needs a **name, NIFT ID and phone**. The email is optional,
+because a lead writing someone down at a stall usually has a name and a number and nothing
+else — and refusing the booking until an address turns up is exactly how the real list ends
+up in a notebook instead.
+
+Add the address whenever you get it, from the booking's own page. Until then the seat is
+marked **"No email yet"** in the list, because without one nobody can take it over.
+
+Once linked, signing in with that address makes `/book` offer them the seat instead of a
+blank form, and **they** fill in blood group, allergies and emergency contact. A lead
+guessing at a blood group is worse than a blank.
+
+Changing the address moves the index entry rather than leaving the old one pointing here —
+otherwise whoever owns the first address could still claim a seat that is no longer theirs.
 
 The claim is enforced by the **database rules**, not the button: a booking created this way
 has an empty `bookerUid`, and the only write that may fill it in is one where the booking's

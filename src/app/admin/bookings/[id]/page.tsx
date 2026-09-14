@@ -37,6 +37,7 @@ import {
   readPromo,
   readSettings,
   rejectBooking,
+  setClaimEmail,
   setPaymentAmount,
 } from "@/lib/trip";
 import { profit, quote } from "@/lib/pricing";
@@ -101,8 +102,35 @@ export default function AdminBookingDetailPage() {
     DEFAULT_SETTINGS as TripSettings
   );
   const [emailing, setEmailing] = useState(false);
+  const [claimEmailInput, setClaimEmailInput] = useState("");
+  const [linking, setLinking] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
+
+  async function linkEmail() {
+    if (!booking) return;
+    const clean = claimEmailInput.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+      toast.error("That doesn't look like an email address.");
+      return;
+    }
+    setLinking(true);
+    try {
+      await setClaimEmail(booking, clean);
+      toast.success(`Linked to ${clean}`, {
+        description: "They can claim this seat once they sign in and verify it.",
+        duration: 8000,
+      });
+      setClaimEmailInput("");
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not link that address."
+      );
+    } finally {
+      setLinking(false);
+    }
+  }
 
   async function saveAmount(paymentId: string) {
     if (!booking) return;
@@ -277,6 +305,57 @@ export default function AdminBookingDetailPage() {
           {BOOKING_STATUS_LABELS[booking.status]}
         </Badge>
       </div>
+
+      {/* A seat a lead wrote down. Until an address is attached there is
+          nothing for a sign-in to match against, so the booking cannot be
+          claimed by anybody - which makes this the one thing standing
+          between it and its owner. */}
+      {!booking.bookerUid && (
+        <Card className="mb-6 border-amber-200 bg-amber-50">
+          <CardBody>
+            <h2 className="text-sm font-semibold text-amber-900">
+              Nobody has claimed this seat yet
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-amber-900">
+              {booking.createdByName
+                ? `${booking.createdByName} booked it for `
+                : "Booked for "}
+              {booking.bookerName}
+              {booking.bookerPhone ? ` · ${booking.bookerPhone}` : ""}.{" "}
+              {booking.claimEmail ? (
+                <>
+                  It&apos;s waiting for <strong>{booking.claimEmail}</strong> to
+                  sign in and verify that address.
+                </>
+              ) : (
+                <>
+                  <strong>No email yet</strong>, so nobody can take it over.
+                  Add one when you have it.
+                </>
+              )}
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <div className="min-w-[15rem] flex-1">
+                <Field
+                  label={booking.claimEmail ? "Change the email" : "Their email"}
+                >
+                  <input
+                    type="email"
+                    value={claimEmailInput}
+                    onChange={(event) => setClaimEmailInput(event.target.value)}
+                    placeholder={booking.claimEmail || "name@gmail.com"}
+                    className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm"
+                  />
+                </Field>
+              </div>
+              <Button onClick={linkEmail} loading={linking} className="mb-0.5">
+                {booking.claimEmail ? "Update" : "Link it"}
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ------------------------------------------------ payment proof */}

@@ -194,7 +194,8 @@ export async function createBooking(
  * guessing at a blood group is worse than a blank.
  */
 export async function createManualBooking(input: {
-  email: string;
+  /** Optional. Often a lead has a name and a phone and nothing else. */
+  email?: string;
   name: string;
   niftId: string;
   phone: string;
@@ -204,11 +205,11 @@ export async function createManualBooking(input: {
 }): Promise<{ bookingId: string; bookingCode: string }> {
   const now = Date.now();
   const bookingCode = newBookingCode();
-  const email = input.email.trim().toLowerCase();
+  const email = input.email?.trim().toLowerCase() || "";
 
   const booking: Omit<Booking, "id"> = {
     bookerUid: "",
-    claimEmail: email,
+    claimEmail: email || null,
     claimedAt: null,
     createdBy: input.adminUid,
     createdByName: input.adminName,
@@ -271,6 +272,35 @@ export async function setPaymentAmount(
     [`payments/${paymentId}/amount`]: Math.max(0, Math.round(amount)),
     updatedAt: Date.now(),
   });
+}
+
+/**
+ * Attaches an email address to a seat booked without one.
+ *
+ * The common case: a lead writes someone down from a name and a phone
+ * number at a stall, and the address turns up later. Until it does the
+ * booking simply cannot be claimed — there is nothing to match a sign-in
+ * against — so this is what turns it into a seat somebody can take over.
+ *
+ * Changing an address moves the index entry rather than leaving the old
+ * one pointing at this booking, which would let whoever owns that first
+ * address claim a seat that is no longer theirs.
+ */
+export async function setClaimEmail(booking: Booking, email: string) {
+  const clean = email.trim().toLowerCase();
+  if (!clean) throw new Error("Give an email address.");
+
+  const updates: Record<string, unknown> = {
+    [tripPath("bookings", booking.id, "claimEmail")]: clean,
+    [tripPath("bookings", booking.id, "bookerEmail")]: clean,
+    [tripPath("bookings", booking.id, "updatedAt")]: Date.now(),
+    [tripPath("claimIndex", emailKey(clean))]: booking.id,
+  };
+  if (booking.claimEmail && booking.claimEmail !== clean) {
+    updates[tripPath("claimIndex", emailKey(booking.claimEmail))] = null;
+  }
+
+  await update(ref(db), updates);
 }
 
 /**
